@@ -19,5 +19,8 @@ sudo systemctl start tomcat
 echo "Starting solr"
 sudo systemctl start solr
 
+echo "Starting nginx"
+sudo systemctl start nginx
+
 
 echo "Services have been started successfully!"

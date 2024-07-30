@@ -27,39 +27,47 @@ This project provides a sample **ZIP Distribution Files** configuration for depl
 This project provides a collection of `bash` scripts designed to automate various installation and setup tasks on an Ubuntu system. Each script handles a specific component or service, ensuring a streamlined and repeatable setup process. Below is a list of the available scripts along with their descriptions:
 
 1. **PostgreSQL Installation**
-   - Script: [1-install_postgres.sh](scripts/1-install_postgres.sh)
+   - Script: [01-install_postgres.sh](scripts/01-install_postgres.sh)
    - Description: Installs and configures PostgreSQL, to be used as object-relational database system.
 
 2. **Java Installation**
-   - Script: [2-install_java.sh](scripts/2-install_java.sh)
+   - Script: [02-install_java.sh](scripts/02-install_java.sh)
    - Description: Installs Java Development Kit (JDK), essential for running Apache Tomcat and Java applications like Apache Solr, Apache ActiveMQ and Transform Service.
 
 3. **Tomcat Installation**
-   - Script: [3-install_tomcat.sh](scripts/3-install_tomcat.sh)
+   - Script: [03-install_tomcat.sh](scripts/03-install_tomcat.sh)
    - Description: Installs Apache Tomcat, to deploy Alfresco and Share web applications.
 
 4. **ActiveMQ Installation**
-   - Script: [4-install_activemq.sh](scripts/4-install_activemq.sh)
+   - Script: [04-install_activemq.sh](scripts/04-install_activemq.sh)
    - Description: Installs Apache ActiveMQ, to be used as messaging server.
 
 5. **Alfresco Resources Download**
-   - Script: [5-download_alfresco_resources.sh](scripts/5-download_alfresco_resources.sh)
+   - Script: [05-download_alfresco_resources.sh](scripts/05-download_alfresco_resources.sh)
    - Description: Downloads necessary resources for Alfresco, including web applications, search service and transform service.
 
 6. **Alfresco Installation**
-   - Script: [6-install_alfresco.sh](scripts/6-install_alfresco.sh)
+   - Script: [06-install_alfresco.sh](scripts/06-install_alfresco.sh)
    - Description: Installs Alfresco Community Edition, configuring Alfresco and Share web applications.
 
 7. **Solr Installation**
-   - Script: [7-install_solr.sh](scripts/7-install_solr.sh)
+   - Script: [07-install_solr.sh](scripts/07-install_solr.sh)
    - Description: Installs Apache Solr, to be used as search platform for indexing and searching data.
 
 8. **Transform Service Installation**
-   - Script: [8-install_transform.sh](scripts/8-install_transform.sh)
+   - Script: [08-install_transform.sh](scripts/08-install_transform.sh)
    - Description: Installs services required for document transformations within Alfresco.
 
-9. **Start Services**
-   - Script: [9-start_services.sh](scripts/9-start_services.sh)
+9. **Alfresco Content App Building**
+   - Script: [09-build_aca.sh](scripts/09-build_aca.sh)
+   - Description: Builds static website from NodeJS application ACA. *This task can be performed in a separate server or machine.*
+
+10. **Nginx Installation**
+   - Script: [10-install_nginx.sh](scripts/10-install_nginx.sh)
+   - Description: Installs web server for ACA and configure web proxy for Alfresco and Share web applications.   
+
+11. **Start Services**
+   - Script: [11-start_services.sh](scripts/11-start_services.sh)
    - Description: Starts all the installed services to ensure they are running correctly.
 
 ## Usage
@@ -67,17 +75,19 @@ This project provides a collection of `bash` scripts designed to automate variou
 Each script can be executed individually in a bash shell. Despiste user `ubuntu` is expected to be used, ensure you have the necessary permissions (e.g., using `sudo` where required).
 
 ```bash
-bash scripts/1-install_postgres.sh
-bash scripts/2-install_java.sh
-bash scripts/3-install_tomcat.sh
-bash scripts/4-install_activemq.sh
-bash scripts/5-download_alfresco_resources.sh
-bash scripts/6-install_alfresco.sh
-bash scripts/7-install_solr.sh
-bash scripts/8-install_transform.sh
+bash scripts/01-install_postgres.sh
+bash scripts/02-install_java.sh
+bash scripts/03-install_tomcat.sh
+bash scripts/04-install_activemq.sh
+bash scripts/05-download_alfresco_resources.sh
+bash scripts/06-install_alfresco.sh
+bash scripts/07-install_solr.sh
+bash scripts/08-install_transform.sh
+bash scripts/09-build_aca.sh
+bash scripts/10-install_nginx.sh
 ```
 
-Although the `9-start_services.sh` script includes the sequence for executing the services, it is recommended to run each line manually. This allows you to verify that each service is up and running correctly before proceeding to the next one.
+Although the `11-start_services.sh` script includes the sequence for executing the services, it is recommended to run each line manually. This allows you to verify that each service is up and running correctly before proceeding to the next one.
 
 ```bash
 sudo systemctl start postgresql
@@ -122,12 +132,19 @@ sudo systemctl status solr
      Active: active (running) since Mon 2024-07-29 09:49:32 UTC; 11s ago
 ```
 
+```bash
+sudo systemctl start nginx
+sudo systemctl status nginx
+```
+
 ## Verification
 
 Default credentials are `admin`/`admin`
 
-* Alfresco Repository: http://localhost:8080/alfresco
+* Alfresco Repository: http://localhost/alfresco
 
-* Share UI: http://localhost:8080/share
+* ACA UI: http://localhost/
+
+* Share UI: http://localhost/share
   - Search "budget" >> 8 results found
   - Access to document "Meeting Notes 2011-01-27.doc" in folder "Meeting Notes" of site "swsdp". PDF Preview must be available.
