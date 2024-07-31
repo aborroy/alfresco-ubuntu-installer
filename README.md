@@ -148,3 +148,40 @@ Default credentials are `admin`/`admin`
 * Share UI: http://localhost/share
   - Search "budget" >> 8 results found
   - Access to document "Meeting Notes 2011-01-27.doc" in folder "Meeting Notes" of site "swsdp". PDF Preview must be available.
+
+## Troubleshooting
+
+If you encounter issues while using the project, refer to the specific service sections below for credentials, port information, data directories, and log file locations. This guide provides essential details for managing and diagnosing problems with PostgreSQL, Tomcat, ActiveMQ, Solr, Transform Service, and Nginx.
+
+1. **PostgreSQL**
+   - **Credentials:** `alfresco/alfresco`
+   - **Port:** `5432`
+   - **Data Directory:** `/var/lib/postgresql/16`
+   - **Log Directory:** `/var/log/postgresql`
+
+2. **Tomcat (Alfresco + Share)**
+   - **Credentials:** `admin/admin`
+   - **Port:** `8080`
+   - **Log Directory:** `/home/ubuntu/tomcat/logs`
+
+3. **ActiveMQ**
+   - **Credentials:** `admin/admin`
+   - **Ports:**
+     - Web Console: `8161`
+     - OpenWire: `61616`
+   - **Data Directory:** `/home/ubuntu/activemq/data`
+   - **Log Directory:** `/home/ubuntu/activemq/data`
+
+4. **Solr**
+   - **Credentials:** HTTP Header with `X-Alfresco-Search-Secret: secret`
+   - **Port:** `8983`
+   - **Data Directory:** `/home/ubuntu/alfresco-search-services/solrhome`
+   - **Log Directory:** `/home/ubuntu/alfresco-search-services/logs`
+
+5. **Transform Service**
+   - **Port:** `8090`
+   - **Logs URL:** [http://localhost:8090/log](http://localhost:8090/log)
+
+6. **Nginx**
+   - **Port:** `80`
+   - **Log Directory:** `/var/log/nginx/`
