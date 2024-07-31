@@ -51,23 +51,23 @@ server {
 
     client_max_body_size 0;
 
-    set  $allowOriginSite *;
+    set  \$allowOriginSite *;
     proxy_pass_request_headers on;
     proxy_pass_header Set-Cookie;
 
     proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
     proxy_redirect off;
     proxy_buffering off;
-    proxy_set_header Host            $host:$server_port;
-    proxy_set_header X-Real-IP       $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host            \$host:\$server_port;
+    proxy_set_header X-Real-IP       \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_pass_header Set-Cookie;    
 
     root /var/www/alfresco-content-app;
     index index.html;
 
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
     }
 
     location /alfresco/ {
@@ -79,6 +79,7 @@ server {
     }    
 }
 EOL
+
 
 # Enable the new Nginx configuration
 echo "Enabling Nginx configuration..."
