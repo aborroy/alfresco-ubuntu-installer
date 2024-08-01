@@ -162,6 +162,7 @@ If you encounter issues while using the project, refer to the specific service s
 2. **Tomcat (Alfresco + Share)**
    - **Credentials:** `admin/admin`
    - **Port:** `8080`
+   - **Data Directory:** `/home/ubuntu/alf_data` (Alfresco filesystem)
    - **Log Directory:** `/home/ubuntu/tomcat/logs`
 
 3. **ActiveMQ**
