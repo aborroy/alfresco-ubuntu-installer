@@ -29,11 +29,7 @@ jobs:
         bash scripts/08-install_transform.sh
         bash scripts/09-build_aca.sh
         bash scripts/10-install_nginx.sh
-      shell: bash
-      run-as: ubuntu        
 
     - name: Verify Alfresco Installation as ubuntu user
       run: |
         systemctl status alfresco
-      shell: bash
-      run-as: ubuntu        
