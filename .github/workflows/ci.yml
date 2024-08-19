@@ -15,8 +15,6 @@ jobs:
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v3
-      with:
-        path: /home/ubuntu
 
     - name: Run Alfresco Installer Script
       run: |
@@ -30,10 +28,7 @@ jobs:
         sudo -u ubuntu bash scripts/08-install_transform.sh
         sudo -u ubuntu bash scripts/09-build_aca.sh
         sudo -u ubuntu bash scripts/10-install_nginx.sh
-      working-directory: /home/ubuntu
 
     - name: Verify Alfresco Installation as ubuntu user
       run: |
         sudo -u ubuntu bash -c "systemctl status alfresco"
-      working-directory: /home/ubuntu/repo
-
