@@ -18,6 +18,7 @@ jobs:
 
     - name: Run Alfresco Installer Script
       run: |
+        sudo useradd -m ubuntu
         sudo -u ubuntu bash scripts/01-install_postgres.sh
         sudo -u ubuntu bash scripts/02-install_java.sh
         sudo -u ubuntu bash scripts/03-install_tomcat.sh
