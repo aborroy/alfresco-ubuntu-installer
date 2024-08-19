@@ -1,0 +1,37 @@
+name: CI - Test Alfresco Ubuntu Installer
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v3
+
+    - name: Run Alfresco Installer Script
+      run: |
+        sudo -u ubuntu bash scripts/01-install_postgres.sh
+        sudo -u ubuntu bash scripts/02-install_java.sh
+        sudo -u ubuntu bash scripts/03-install_tomcat.sh
+        sudo -u ubuntu bash scripts/04-install_activemq.sh
+        sudo -u ubuntu bash scripts/05-download_alfresco_resources.sh
+        sudo -u ubuntu bash scripts/06-install_alfresco.sh
+        sudo -u ubuntu bash scripts/07-install_solr.sh
+        sudo -u ubuntu bash scripts/08-install_transform.sh
+        sudo -u ubuntu bash scripts/09-build_aca.sh
+        sudo -u ubuntu bash scripts/10-install_nginx.sh
+      working-directory: /home/ubuntu
+
+    - name: Verify Alfresco Installation as ubuntu user
+      run: |
+        sudo -u ubuntu bash -c "systemctl status alfresco"
+      working-directory: /home/ubuntu/repo
+
