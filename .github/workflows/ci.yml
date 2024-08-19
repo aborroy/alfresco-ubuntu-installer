@@ -15,7 +15,8 @@ jobs:
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v3
-      working-directory: /home/ubuntu
+      with:
+        path: /home/ubuntu
 
     - name: Run Alfresco Installer Script
       run: |
