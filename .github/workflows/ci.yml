@@ -19,17 +19,21 @@ jobs:
     - name: Run Alfresco Installer Script
       run: |
         sudo useradd -m ubuntu
-        sudo -u ubuntu bash scripts/01-install_postgres.sh
-        sudo -u ubuntu bash scripts/02-install_java.sh
-        sudo -u ubuntu bash scripts/03-install_tomcat.sh
-        sudo -u ubuntu bash scripts/04-install_activemq.sh
-        sudo -u ubuntu bash scripts/05-download_alfresco_resources.sh
-        sudo -u ubuntu bash scripts/06-install_alfresco.sh
-        sudo -u ubuntu bash scripts/07-install_solr.sh
-        sudo -u ubuntu bash scripts/08-install_transform.sh
-        sudo -u ubuntu bash scripts/09-build_aca.sh
-        sudo -u ubuntu bash scripts/10-install_nginx.sh
+        bash scripts/01-install_postgres.sh
+        bash scripts/02-install_java.sh
+        bash scripts/03-install_tomcat.sh
+        bash scripts/04-install_activemq.sh
+        bash scripts/05-download_alfresco_resources.sh
+        bash scripts/06-install_alfresco.sh
+        bash scripts/07-install_solr.sh
+        bash scripts/08-install_transform.sh
+        bash scripts/09-build_aca.sh
+        bash scripts/10-install_nginx.sh
+      shell: bash
+      run-as: ubuntu        
 
     - name: Verify Alfresco Installation as ubuntu user
       run: |
-        sudo -u ubuntu bash -c "systemctl status alfresco"
+        systemctl status alfresco
+      shell: bash
+      run-as: ubuntu        
