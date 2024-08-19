@@ -10,11 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-
-    container:
-      image: ubuntu:24.04
-      options: --user ubuntu     
+    runs-on: ubuntu:24.04
 
     steps:
     - name: Checkout the repository
