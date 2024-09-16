@@ -3,10 +3,22 @@
 set -e
 
 # Variables
-ACTIVEMQ_VERSION=5.18.5
 ACTIVEMQ_USER=ubuntu
 ACTIVEMQ_GROUP=ubuntu
 ACTIVEMQ_HOME=/home/ubuntu/activemq
+
+# Function to fetch the latest ActiveMQ version
+fetch_latest_version() {
+# Fetches the latest version 5.*.*
+  curl -s https://dlcdn.apache.org/activemq/ | grep -oP '5+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
+# Fetches the latest version 6.*.*
+# curl -s https://dlcdn.apache.org/activemq/ | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
+}
+
+# Automatically fetch the latest ActiveMQ version
+ACTIVEMQ_VERSION=$(fetch_latest_version)
+
+echo "Using ActiveMQ version: $ACTIVEMQ_VERSION"
 
 echo "Updating package list..."
 sudo apt update

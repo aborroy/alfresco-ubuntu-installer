@@ -3,10 +3,19 @@
 set -e
 
 # Variables
-TOMCAT_VERSION=10.1.26
 TOMCAT_USER=ubuntu
 TOMCAT_GROUP=ubuntu
 TOMCAT_HOME=/home/ubuntu/tomcat
+
+# Function to fetch the latest Tomcat version
+fetch_latest_version() {
+  curl -s https://dlcdn.apache.org/tomcat/tomcat-10/ | grep -oP 'v[0-9]+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
+}
+
+# Automatically fetch the latest Tomcat version
+TOMCAT_VERSION=$(fetch_latest_version)
+
+echo "Using Tomcat version: $TOMCAT_VERSION"
 
 echo "Updating package list..."
 sudo apt update
