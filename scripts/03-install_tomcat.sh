@@ -35,7 +35,8 @@ echo "Creating Tomcat systemd service file..."
 cat <<EOL | sudo tee /etc/systemd/system/tomcat.service
 [Unit]
 Description=Apache Tomcat Web Application Container
-After=network.target
+After=network.target transform.service
+Requires=transform.service
 
 [Service]
 Type=forking

@@ -12,6 +12,8 @@ echo "Verifying Node.js and npm installation..."
 node -v
 npm -v
 
+echo "Installing Git..."
+sudo apt install -y git
 # Clone the Alfresco Content App repository
 git clone https://github.com/Alfresco/alfresco-content-app.git
 cd alfresco-content-app

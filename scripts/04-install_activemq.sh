@@ -7,6 +7,8 @@ ACTIVEMQ_USER=ubuntu
 ACTIVEMQ_GROUP=ubuntu
 ACTIVEMQ_HOME=/home/ubuntu/activemq
 
+echo "Installing Curl..."
+sudo apt install -y curl
 # Function to fetch the latest ActiveMQ version
 fetch_latest_version() {
 # Fetches the latest version 5.*.*
@@ -38,7 +40,8 @@ echo "Creating ActiveMQ systemd service file..."
 cat <<EOL | sudo tee /etc/systemd/system/activemq.service
 [Unit]
 Description=Apache ActiveMQ
-After=network.target
+After=network.target postgresql.service
+Requires=postgresql.service
 
 [Service]
 Type=forking

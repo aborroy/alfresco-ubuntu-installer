@@ -24,7 +24,8 @@ echo "Creating Transform systemd service file..."
 cat <<EOL | sudo tee /etc/systemd/system/transform.service
 [Unit]
 Description=Transform Application Container
-After=network.target
+After=network.target activemq.service
+Requires=activemq.service
 
 [Service]
 Type=simple

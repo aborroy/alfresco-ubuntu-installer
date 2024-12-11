@@ -16,7 +16,8 @@ echo "Creating SOLR systemd service file..."
 cat <<EOL | sudo tee /etc/systemd/system/solr.service
 [Unit]
 Description=Apache SOLR Web Application Container
-After=network.target
+After=network.target tomcat.service
+Requires=tomcat.service
 
 [Service]
 Type=forking
