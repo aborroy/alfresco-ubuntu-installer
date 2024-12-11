@@ -38,7 +38,8 @@ echo "Creating ActiveMQ systemd service file..."
 cat <<EOL | sudo tee /etc/systemd/system/activemq.service
 [Unit]
 Description=Apache ActiveMQ
-After=network.target
+After=network.target postgresql.service
+Requires=postgresql.service
 
 [Service]
 Type=forking
