@@ -21,7 +21,8 @@ cat <<EOL | sudo tee /etc/systemd/system/nginx.service
 [Unit]
 Description=A high performance web server and a reverse proxy server
 Documentation=man:nginx(8)
-After=network.target remote-fs.target nss-lookup.target
+After=network.target remote-fs.target nss-lookup.target solr.service
+Requires=solr.service
 
 [Service]
 Type=forking
