@@ -8,7 +8,7 @@ ACTIVEMQ_GROUP=ubuntu
 ACTIVEMQ_HOME=/home/ubuntu/activemq
 
 echo "Installing Curl..."
-sudo apt install curl
+sudo apt install -y curl
 # Function to fetch the latest ActiveMQ version
 fetch_latest_version() {
 # Fetches the latest version 5.*.*
