@@ -62,11 +62,11 @@ EOL
 echo "Reloading systemd daemon..."
 sudo systemctl daemon-reload
 
-echo "Starting Tomcat service..."
-sudo systemctl start tomcat
+# echo "Starting Tomcat service..."
+# sudo systemctl start tomcat
 
-echo "Stopping Tomcat service..."
-sudo systemctl stop tomcat
+# echo "Stopping Tomcat service..."
+# sudo systemctl stop tomcat
 
 echo "Enabling Tomcat service to start on boot..."
 sudo systemctl enable tomcat

@@ -86,9 +86,9 @@ EOL
 echo "Enabling Nginx configuration..."
 sudo ln -s /etc/nginx/sites-available/alfresco-content-app /etc/nginx/sites-enabled/
 sudo nginx -t
-sudo systemctl restart nginx
+# sudo systemctl restart nginx
 
-sudo systemctl stop nginx
+# sudo systemctl stop nginx
 
 # Instructions to transfer the built files
 echo "Nginx setup complete."
