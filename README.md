@@ -49,14 +49,14 @@ This project provides a collection of `bash` scripts designed to automate variou
 6. **Alfresco Installation**
    - Script: [06-install_alfresco.sh](scripts/06-install_alfresco.sh)
    - Description: Installs Alfresco Community Edition, configuring Alfresco and Share web applications.
-   - **TIP**: If you use different port numbers for alfresco.port and share.port e.g. alfresco.port=39003 and share.port=39003. Ensure you adjust the same in the following files:
-    ● 10-install_nginx.sh 
-    ● /home/ubuntu/tomcat/conf/server.xml 
-    ● /home/ubuntu/tomcat/shared/classes/alfresco/web-extension/share-config-custom.xml
-    ● /home/ubuntu/alfresco-search-services/solrhome/archive/conf/solrcore.properties
-    ● /home/ubuntu/alfresco-search-services/solrhome/templates/noRerank/conf/solrcore.properties
-    ● /home/ubuntu/alfresco-search-services/solrhome/templates/rerank/conf/solrcore.properties 
-    ● /home/ubuntu/alfresco-search-services/solrhome/alfresco/conf/solrcore.properties 
+   * **TIP**: If you use different port numbers for alfresco.port and share.port e.g. alfresco.port=39003 and share.port=39003. Ensure you adjust the same in the following files:
+    - 10-install_nginx.sh
+    - /home/ubuntu/tomcat/conf/server.xml
+    - /home/ubuntu/tomcat/shared/classes/alfresco/web-extension/share-config-custom.xml
+    - /home/ubuntu/alfresco-search-services/solrhome/archive/conf/solrcore.properties
+    - /home/ubuntu/alfresco-search-services/solrhome/templates/noRerank/conf/solrcore.properties
+    - /home/ubuntu/alfresco-search-services/solrhome/templates/rerank/conf/solrcore.properties 
+    - /home/ubuntu/alfresco-search-services/solrhome/alfresco/conf/solrcore.properties 
     
    Otherwise, alfresco, solr and share wouldn't work properly i.e., alfresco and share won't allow you to login and solr won't be able to search properly.
 
