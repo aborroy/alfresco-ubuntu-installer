@@ -37,11 +37,11 @@ EOL
 echo "Reloading systemd daemon..."
 sudo systemctl daemon-reload
 
-echo "Starting Solr service..."
-sudo systemctl start solr
+# echo "Starting Solr service..."
+# sudo systemctl start solr
 
-echo "Stopping Solr service..."
-sudo systemctl stop solr
+# echo "Stopping Solr service..."
+# sudo systemctl stop solr
 
 echo "Enabling Solr service to start on boot..."
 sudo systemctl enable solr

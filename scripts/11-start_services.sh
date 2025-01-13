@@ -19,8 +19,8 @@ sudo systemctl start tomcat
 echo "Starting solr"
 sudo systemctl start solr
 
-echo "Starting nginx"
-sudo systemctl start nginx
+echo "Restarting nginx to ensure configuration is applied"
+sudo systemctl restart nginx
 
 
 echo "Services have been started successfully!"
