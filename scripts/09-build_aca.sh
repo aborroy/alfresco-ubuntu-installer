@@ -18,8 +18,16 @@ sudo apt install -y git
 git clone https://github.com/Alfresco/alfresco-content-app.git
 cd alfresco-content-app
 
-# Checkout to the specific version 4.4.1
-git checkout tags/4.4.1 -b 4.4.1
+# Fetch the latest version tag dynamically
+echo "Fetching the latest version tag..."
+latest_tag=$(git ls-remote --tags --sort="v:refname" https://github.com/Alfresco/alfresco-content-app.git \
+  | grep -o 'refs/tags/[0-9]*\.[0-9]*\.[0-9]*' \
+  | tail -n 1 \
+  | sed 's/refs\/tags\///')
+
+# Checkout to the latest version tag
+echo "Checking out to the latest version: $latest_tag"
+git checkout tags/$latest_tag -b $latest_tag
 
 # Install project dependencies
 npm install

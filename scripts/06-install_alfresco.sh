@@ -11,10 +11,10 @@ sed -i 's|^shared.loader=$|shared.loader=${catalina.base}/shared/classes,${catal
 
 echo "Unzip Alfresco ZIP Distribution File"
 mkdir /tmp/alfresco
-unzip downloads/alfresco-content-services-community-distribution-23.2.1.zip -d /tmp/alfresco
+unzip downloads/alfresco-content-services-community-distribution-*.zip -d /tmp/alfresco
 
 echo "Copy JDBC driver"
-cp /tmp/alfresco/web-server/lib/postgresql-42.6.0.jar /home/ubuntu/tomcat/shared/lib/
+cp /tmp/alfresco/web-server/lib/postgresql-*.jar /home/ubuntu/tomcat/shared/lib/
 
 echo "Configure JAR Addons deployment"
 mkdir -p /home/ubuntu/modules/platform && mkdir -p /home/ubuntu/modules/share && mkdir -p /home/ubuntu/tomcat/conf/Catalina/localhost
