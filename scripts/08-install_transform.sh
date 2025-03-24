@@ -8,12 +8,19 @@ sudo apt install -y imagemagick &&
 sudo apt install -y libreoffice &&
 sudo apt install -y exiftool
 
-curl -L -o /tmp/alfresco-pdf-renderer-1.2-linux.tgz https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-pdf-renderer/1.2/alfresco-pdf-renderer-1.2-linux.tgz &&
-sudo tar xf /tmp/alfresco-pdf-renderer-1.2-linux.tgz -C /usr/bin
+latest_version=$(curl -s https://nexus.alfresco.com/nexus/service/rest/repository/browse/releases/org/alfresco/alfresco-pdf-renderer/ \
+| sed -n 's/.*<a href="\(.*\)\/">.*/\1/p' \
+| grep -E '^[0-9]+(\.[0-9]+)*$' \
+| sort -V \
+| tail -n 1
+)
+
+curl -L -o /tmp/alfresco-pdf-renderer-$latest_version-linux.tgz https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-pdf-renderer/$latest_version/alfresco-pdf-renderer-$latest_version-linux.tgz &&
+sudo tar xf /tmp/alfresco-pdf-renderer-$latest_version-linux.tgz -C /usr/bin
 
 echo "Configure Transform server"
 mkdir /home/ubuntu/transform
-cp downloads/alfresco-transform-core-aio-5.1.0.jar /home/ubuntu/transform
+cp downloads/alfresco-transform-core-aio-*.jar /home/ubuntu/transform
 
 # Variables
 TRANSFORM_USER=ubuntu

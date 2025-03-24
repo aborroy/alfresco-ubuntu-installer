@@ -4,7 +4,7 @@ set -e
 
 echo "Unzip SOLR ZIP Distribution File"
 mkdir /tmp/solr
-unzip downloads/alfresco-search-services-2.0.9.1.zip -d /tmp/solr
+unzip downloads/alfresco-search-services-*.zip -d /tmp/solr
 mv /tmp/solr/alfresco-search-services /home/ubuntu
 
 # Variables

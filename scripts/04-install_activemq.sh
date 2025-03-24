@@ -12,9 +12,9 @@ sudo apt install -y curl
 # Function to fetch the latest ActiveMQ version
 fetch_latest_version() {
 # Fetches the latest version 5.*.*
-  curl -s https://dlcdn.apache.org/activemq/ | grep -oP '5+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
+  # curl -s https://dlcdn.apache.org/activemq/ | grep -oP '5+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
 # Fetches the latest version 6.*.*
-# curl -s https://dlcdn.apache.org/activemq/ | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
+curl -s https://dlcdn.apache.org/activemq/ | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' | tail -1 | sed 's/v//'
 }
 
 # Automatically fetch the latest ActiveMQ version

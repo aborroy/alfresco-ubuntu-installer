@@ -1,12 +1,36 @@
 #!/bin/bash
 
+# Function to get the latest version of a component
+get_latest_version() {
+  local base_url=$1
+  curl -s "$base_url" \
+  | sed -n 's/.*<a href="\(.*\)\/">.*/\1/p' \
+  | grep -E '^[0-9]+(\.[0-9]+)*$' \
+  | sort -V \
+  | tail -n 1
+}
+
+# Base URLs for the components
+alfresco_content_base_url="https://nexus.alfresco.com/nexus/service/rest/repository/browse/releases/org/alfresco/alfresco-content-services-community-distribution/"
+alfresco_search_base_url="https://nexus.alfresco.com/nexus/service/rest/repository/browse/releases/org/alfresco/alfresco-search-services/"
+alfresco_transform_core_base_url="https://nexus.alfresco.com/nexus/service/rest/repository/browse/releases/org/alfresco/alfresco-transform-core-aio/"
+
+# Fetch the latest versions
+latest_alfresco_content_version=$(get_latest_version "$alfresco_content_base_url")
+latest_alfresco_search_version=$(get_latest_version "$alfresco_search_base_url")
+latest_alfresco_transform_core_version=$(get_latest_version "$alfresco_transform_core_base_url")
+
+# Construct the download URLs
+alfresco_content_url="https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-content-services-community-distribution/$latest_alfresco_content_version/alfresco-content-services-community-distribution-$latest_alfresco_content_version.zip"
+alfresco_search_url="https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-search-services/$latest_alfresco_search_version/alfresco-search-services-$latest_alfresco_search_version.zip"
+alfresco_transform_core_url="https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-transform-core-aio/$latest_alfresco_transform_core_version/alfresco-transform-core-aio-$latest_alfresco_transform_core_version.jar"
+
 # URLs of the resources to be downloaded
 URLS=(
-  "https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-content-services-community-distribution/23.2.1/alfresco-content-services-community-distribution-23.2.1.zip"
-  "https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-search-services/2.0.9.1/alfresco-search-services-2.0.9.1.zip"
-  "https://nexus.alfresco.com/nexus/repository/releases/org/alfresco/alfresco-transform-core-aio/5.1.0/alfresco-transform-core-aio-5.1.0.jar"
+  "$alfresco_content_url"
+  "$alfresco_search_url"
+  "$alfresco_transform_core_url"
 )
-
 
 # Directory to save the downloaded files
 DOWNLOAD_DIR="./downloads"
@@ -41,4 +65,3 @@ for url in "${URLS[@]}"; do
 done
 
 echo "All downloads are complete."
-

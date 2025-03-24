@@ -157,7 +157,7 @@ Default credentials are `admin`/`admin`
 * ACA UI: http://localhost/
 
 * Share UI: http://localhost/share
-  - Search "budget" >> 8 results found
+  - Search "budget" >> 4 results found
   - Access to document "Meeting Notes 2011-01-27.doc" in folder "Meeting Notes" of site "swsdp". PDF Preview must be available.
 
 ## Troubleshooting
