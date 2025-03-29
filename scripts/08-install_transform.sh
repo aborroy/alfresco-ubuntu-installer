@@ -42,8 +42,8 @@ Group=$TRANSFORM_GROUP
 
 Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
 Environment="LIBREOFFICE_HOME=/usr/lib/libreoffice"
-
-ExecStart=java -jar /home/ubuntu/transform/alfresco-transform-core-aio-5.1.0.jar
+############################################ ADJUST THE LINE BELOW TO REFLECT THE CORRECT JAR FILE ##########################################
+ExecStart=java -jar /home/ubuntu/transform/alfresco-transform-core-aio-5.1.7.jar
 ExecStop=/bin/kill -15 $MAINPID
 
 [Install]
