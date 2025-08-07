@@ -3,9 +3,9 @@
 set -e
 
 # Variables
-TOMCAT_USER=ubuntu
-TOMCAT_GROUP=ubuntu
-TOMCAT_HOME=/home/ubuntu/tomcat
+TOMCAT_USER=$(whoami)
+TOMCAT_GROUP=$(id -gn)
+TOMCAT_HOME=/home/$TOMCAT_USER/tomcat
 
 # Function to fetch the latest Tomcat version
 fetch_latest_version() {
