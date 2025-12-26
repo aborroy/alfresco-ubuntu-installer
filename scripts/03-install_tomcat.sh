@@ -210,13 +210,11 @@ install_tomcat() {
         exit 1
     fi
     
-    # Verify extraction was successful
-    if [ ! -f "$tomcat_home/conf/server.xml" ]; then
+    # Verify extraction was successful (use sudo since conf may have restricted permissions)
+    if ! sudo test -f "$tomcat_home/conf/server.xml"; then
         log_error "Extraction incomplete - conf/server.xml not found"
         log_error "Contents of $tomcat_home:"
         ls -la "$tomcat_home" || true
-        log_error "Contents of archive:"
-        tar tzf "$download_file" | head -20 || true
         exit 1
     fi
     
@@ -353,7 +351,7 @@ verify_installation() {
     )
     
     for file in "${key_files[@]}"; do
-        if [ -f "$tomcat_home/$file" ]; then
+        if sudo test -f "$tomcat_home/$file"; then
             log_info "Found: $file"
         else
             log_error "Missing: $file"
