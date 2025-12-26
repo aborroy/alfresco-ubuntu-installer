@@ -491,13 +491,24 @@ apply_amps() {
         return 0
     fi
 
+    # Ensure WAR files are writable by ALFRESCO_USER for AMP installation.
+    # WAR copies are typically done with sudo, resulting in root ownership.
+    if [ -f "$alfresco_war" ]; then
+        sudo chown "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "$alfresco_war"
+        sudo chmod 664 "$alfresco_war"
+    fi
+    if [ -f "$share_war" ]; then
+        sudo chown "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "$share_war"
+        sudo chmod 664 "$share_war"
+    fi
+
     # Apply platform AMPs
     if [ -d "$amps_dir" ] && [ "$(ls -A "$amps_dir" 2>/dev/null)" ]; then
         log_info "Applying platform AMPs..."
-        java -jar "$mmt_jar" install "$amps_dir" "$alfresco_war" -directory -force
+        sudo -u "${ALFRESCO_USER}" java -jar "$mmt_jar" install "$amps_dir" "$alfresco_war" -directory -force
 
         log_info "Installed platform AMPs:"
-        java -jar "$mmt_jar" list "$alfresco_war"
+        sudo -u "${ALFRESCO_USER}" java -jar "$mmt_jar" list "$alfresco_war"
     else
         log_info "No platform AMPs to install"
     fi
@@ -505,10 +516,10 @@ apply_amps() {
     # Apply Share AMPs
     if [ -d "$amps_share_dir" ] && [ "$(ls -A "$amps_share_dir" 2>/dev/null)" ]; then
         log_info "Applying Share AMPs..."
-        java -jar "$mmt_jar" install "$amps_share_dir" "$share_war" -directory -force
+        sudo -u "${ALFRESCO_USER}" java -jar "$mmt_jar" install "$amps_share_dir" "$share_war" -directory -force
 
         log_info "Installed Share AMPs:"
-        java -jar "$mmt_jar" list "$share_war"
+        sudo -u "${ALFRESCO_USER}" java -jar "$mmt_jar" list "$share_war"
     else
         log_info "No Share AMPs to install"
     fi
