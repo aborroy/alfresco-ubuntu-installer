@@ -204,6 +204,10 @@ create_systemd_service() {
     local tomcat_home="${ALFRESCO_HOME}/tomcat"
     local keystore_location="${ALFRESCO_HOME}/keystore/metadata-keystore/keystore"
     
+    # Calculate memory allocation
+    calculate_memory_allocation
+    show_memory_allocation
+    
     # Check if service already exists and is identical
     if [ -f "$service_file" ]; then
         log_info "Tomcat service file already exists, updating..."
@@ -227,8 +231,11 @@ Environment="JAVA_HOME=${JAVA_HOME_PATH}"
 Environment="CATALINA_PID=${tomcat_home}/temp/tomcat.pid"
 Environment="CATALINA_HOME=${tomcat_home}"
 Environment="CATALINA_BASE=${tomcat_home}"
-Environment="CATALINA_OPTS=-Xms${TOMCAT_XMS} -Xmx${TOMCAT_XMX} -server -XX:+UseG1GC -XX:+UseStringDeduplication"
-Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom"
+
+# Memory settings - auto-calculated based on system RAM (${MEM_PROFILE} profile)
+Environment="CATALINA_OPTS=-Xms${MEM_TOMCAT_XMS}m -Xmx${MEM_TOMCAT_XMX}m -server -XX:+UseG1GC -XX:+UseStringDeduplication -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
+
+Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom -Dfile.encoding=UTF-8"
 Environment="JAVA_TOOL_OPTIONS=-Dencryption.keystore.type=JCEKS -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding -Dencryption.keyAlgorithm=DESede -Dencryption.keystore.location=${keystore_location} -Dmetadata-keystore.password=${KEYSTORE_PASSWORD} -Dmetadata-keystore.aliases=metadata -Dmetadata-keystore.metadata.password=${KEYSTORE_METADATA_PASSWORD} -Dmetadata-keystore.metadata.algorithm=DESede"
 
 ExecStart=${tomcat_home}/bin/startup.sh
@@ -242,6 +249,9 @@ RestartSec=10
 NoNewPrivileges=true
 PrivateTmp=true
 
+# File descriptor limits
+LimitNOFILE=65536
+
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -253,7 +263,7 @@ EOF
     log_info "Reloading systemd daemon..."
     sudo systemctl daemon-reload
     
-    log_info "Systemd service created"
+    log_info "Systemd service created with heap: ${MEM_TOMCAT_XMS}m - ${MEM_TOMCAT_XMX}m"
 }
 
 # -----------------------------------------------------------------------------

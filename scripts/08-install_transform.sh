@@ -277,6 +277,9 @@ create_systemd_service() {
     local transform_home="${ALFRESCO_HOME}/transform"
     local transform_jar="$transform_home/alfresco-transform-core-aio.jar"
     
+    # Calculate memory allocation
+    calculate_memory_allocation
+    
     # Find LibreOffice home
     local libreoffice_home="/usr/lib/libreoffice"
     if [ ! -d "$libreoffice_home" ]; then
@@ -288,6 +291,10 @@ create_systemd_service() {
         log_info "Transform service file already exists, updating..."
         backup_file "$service_file"
     fi
+    
+    # Calculate min heap (50% of max)
+    local transform_xms=$((MEM_TRANSFORM / 2))
+    [ $transform_xms -lt 256 ] && transform_xms=256
     
     cat << EOF | sudo tee "$service_file" > /dev/null
 [Unit]
@@ -308,13 +315,12 @@ Environment="LIBREOFFICE_HOME=${libreoffice_home}"
 # Transform service configuration
 Environment="TRANSFORM_PORT=${TRANSFORM_PORT}"
 
-# JVM options
-Environment="JAVA_OPTS=-Xms512m -Xmx1024m"
-
 # ExecStart uses the symlink, not the versioned JAR
 # This allows upgrading the JAR without modifying the service file
+# Memory settings - auto-calculated based on system RAM (${MEM_PROFILE} profile)
 ExecStart=${JAVA_HOME_PATH}/bin/java \\
-    -Xms512m -Xmx1024m \\
+    -Xms${transform_xms}m -Xmx${MEM_TRANSFORM}m \\
+    -XX:+UseG1GC \\
     -DLIBREOFFICE_HOME=${libreoffice_home} \\
     -Dpdfrenderer.exe=/usr/bin/alfresco-pdf-renderer \\
     -jar ${transform_jar} \\
@@ -344,7 +350,7 @@ EOF
     log_info "Reloading systemd daemon..."
     sudo systemctl daemon-reload
     
-    log_info "Systemd service created"
+    log_info "Systemd service created with heap: ${transform_xms}m - ${MEM_TRANSFORM}m"
 }
 
 # -----------------------------------------------------------------------------

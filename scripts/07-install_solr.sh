@@ -231,22 +231,14 @@ create_systemd_service() {
     local service_file="/etc/systemd/system/solr.service"
     local solr_home="${ALFRESCO_HOME}/alfresco-search-services"
     
+    # Calculate memory allocation
+    calculate_memory_allocation
+    
     # Check if service already exists
     if [ -f "$service_file" ]; then
         log_info "Solr service file already exists, updating..."
         backup_file "$service_file"
     fi
-    
-    # Calculate Solr memory (use ~25% of system memory, min 1GB, max 4GB)
-    local total_mem_kb
-    total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    local solr_mem_mb=$((total_mem_kb / 1024 / 4))
-    
-    # Enforce min/max limits
-    [ $solr_mem_mb -lt 1024 ] && solr_mem_mb=1024
-    [ $solr_mem_mb -gt 4096 ] && solr_mem_mb=4096
-    
-    log_info "Configuring Solr with ${solr_mem_mb}MB heap"
     
     cat << EOF | sudo tee "$service_file" > /dev/null
 [Unit]
@@ -262,7 +254,9 @@ Group=${ALFRESCO_GROUP}
 
 Environment="JAVA_HOME=${JAVA_HOME_PATH}"
 Environment="SOLR_HOME=${solr_home}/solrhome"
-Environment="SOLR_JAVA_MEM=-Xms${solr_mem_mb}m -Xmx${solr_mem_mb}m"
+
+# Memory settings - auto-calculated based on system RAM (${MEM_PROFILE} profile)
+Environment="SOLR_JAVA_MEM=-Xms${MEM_SOLR}m -Xmx${MEM_SOLR}m"
 
 # Solr startup arguments
 # -Dcreate.alfresco.defaults: Creates default alfresco and archive cores on first start
@@ -297,7 +291,7 @@ EOF
     log_info "Reloading systemd daemon..."
     sudo systemctl daemon-reload
     
-    log_info "Systemd service created"
+    log_info "Systemd service created with heap: ${MEM_SOLR}m"
 }
 
 # -----------------------------------------------------------------------------

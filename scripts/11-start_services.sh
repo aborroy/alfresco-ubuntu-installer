@@ -58,6 +58,11 @@ main() {
     # Load configuration
     load_config
     
+    # Calculate and display memory allocation
+    calculate_memory_allocation
+    show_memory_allocation
+    echo ""
+    
     # Track results
     declare -A SERVICE_STATUS
     

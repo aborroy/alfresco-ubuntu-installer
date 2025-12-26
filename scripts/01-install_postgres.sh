@@ -28,11 +28,15 @@ main() {
     check_sudo  # Verify sudo access
     load_config # Load configuration from alfresco.env
     
+    # Check memory requirements
+    check_memory_requirements 8192 || true
+    
     # Install PostgreSQL
     install_postgresql
     
     # Configure PostgreSQL
     configure_authentication
+    configure_postgresql_memory
     
     # Restart service to apply configuration
     restart_postgresql
@@ -182,6 +186,79 @@ create_alfresco_database() {
     fi
     
     log_info "Database configuration completed"
+}
+
+# -----------------------------------------------------------------------------
+# Configure PostgreSQL Performance
+# -----------------------------------------------------------------------------
+configure_postgresql_memory() {
+    log_step "Configuring PostgreSQL memory settings..."
+    
+    # Calculate memory allocation
+    calculate_memory_allocation
+    
+    local pg_conf="/etc/postgresql/${POSTGRESQL_VERSION}/main/postgresql.conf"
+    
+    if [ ! -f "$pg_conf" ]; then
+        log_warn "postgresql.conf not found, skipping memory configuration"
+        return 0
+    fi
+    
+    backup_file "$pg_conf"
+    
+    log_info "Applying memory settings: shared_buffers=${MEM_POSTGRES_SHARED}MB, effective_cache_size=${MEM_POSTGRES_CACHE}MB"
+    
+    # Update shared_buffers
+    if grep -q "^shared_buffers" "$pg_conf"; then
+        sudo sed -i "s/^shared_buffers.*/shared_buffers = ${MEM_POSTGRES_SHARED}MB/" "$pg_conf"
+    else
+        echo "shared_buffers = ${MEM_POSTGRES_SHARED}MB" | sudo tee -a "$pg_conf" > /dev/null
+    fi
+    
+    # Update effective_cache_size
+    if grep -q "^effective_cache_size" "$pg_conf"; then
+        sudo sed -i "s/^effective_cache_size.*/effective_cache_size = ${MEM_POSTGRES_CACHE}MB/" "$pg_conf"
+    else
+        echo "effective_cache_size = ${MEM_POSTGRES_CACHE}MB" | sudo tee -a "$pg_conf" > /dev/null
+    fi
+    
+    # Update work_mem (per-operation memory)
+    local work_mem=$((MEM_POSTGRES_SHARED / 16))
+    [ $work_mem -lt 4 ] && work_mem=4
+    [ $work_mem -gt 256 ] && work_mem=256
+    
+    if grep -q "^work_mem" "$pg_conf"; then
+        sudo sed -i "s/^work_mem.*/work_mem = ${work_mem}MB/" "$pg_conf"
+    else
+        echo "work_mem = ${work_mem}MB" | sudo tee -a "$pg_conf" > /dev/null
+    fi
+    
+    # Update maintenance_work_mem
+    local maint_mem=$((MEM_POSTGRES_SHARED / 4))
+    [ $maint_mem -lt 64 ] && maint_mem=64
+    [ $maint_mem -gt 2048 ] && maint_mem=2048
+    
+    if grep -q "^maintenance_work_mem" "$pg_conf"; then
+        sudo sed -i "s/^maintenance_work_mem.*/maintenance_work_mem = ${maint_mem}MB/" "$pg_conf"
+    else
+        echo "maintenance_work_mem = ${maint_mem}MB" | sudo tee -a "$pg_conf" > /dev/null
+    fi
+    
+    # Checkpoint settings for better write performance
+    if grep -q "^checkpoint_completion_target" "$pg_conf"; then
+        sudo sed -i "s/^checkpoint_completion_target.*/checkpoint_completion_target = 0.9/" "$pg_conf"
+    else
+        echo "checkpoint_completion_target = 0.9" | sudo tee -a "$pg_conf" > /dev/null
+    fi
+    
+    # WAL settings
+    if grep -q "^wal_buffers" "$pg_conf"; then
+        sudo sed -i "s/^wal_buffers.*/wal_buffers = 16MB/" "$pg_conf"
+    else
+        echo "wal_buffers = 16MB" | sudo tee -a "$pg_conf" > /dev/null
+    fi
+    
+    log_info "PostgreSQL memory configuration applied"
 }
 
 # -----------------------------------------------------------------------------

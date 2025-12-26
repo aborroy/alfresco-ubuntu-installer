@@ -150,10 +150,6 @@ export TOMCAT_HTTP_PORT="8080"
 export TOMCAT_SHUTDOWN_PORT="8005"
 export TOMCAT_AJP_PORT="8009"
 
-# JVM Memory Settings (adjust based on available RAM)
-export TOMCAT_XMS="2048M"
-export TOMCAT_XMX="3072M"
-
 # -----------------------------------------------------------------------------
 # Nginx Configuration
 # -----------------------------------------------------------------------------
@@ -171,6 +167,27 @@ export ALFRESCO_PORT="8080"
 export SHARE_PROTOCOL="http"
 export SHARE_HOST="localhost"
 export SHARE_PORT="8080"
+
+# -----------------------------------------------------------------------------
+# Memory Settings (Auto-calculated based on system RAM if not set)
+# -----------------------------------------------------------------------------
+# Memory is automatically allocated based on total system RAM:
+#   < 8GB:   minimal profile (not recommended for production)
+#   8-16GB:  small profile
+#   16-32GB: medium profile (recommended)
+#   32-64GB: large profile
+#   64GB+:   xlarge profile
+#
+# Current system: $(free -h | awk '/^Mem:/{print $2}') RAM
+#
+# Uncomment and modify these lines to override auto-detection (values in MB):
+# export TOMCAT_XMS_MB="4096"        # Tomcat initial heap
+# export TOMCAT_XMX_MB="6144"        # Tomcat maximum heap
+# export SOLR_HEAP_MB="2048"         # Solr heap
+# export TRANSFORM_HEAP_MB="1024"    # Transform service heap
+# export ACTIVEMQ_HEAP_MB="512"      # ActiveMQ heap
+# export POSTGRES_SHARED_BUFFERS_MB="1024"   # PostgreSQL shared_buffers
+# export POSTGRES_EFFECTIVE_CACHE_MB="2048"  # PostgreSQL effective_cache_size
 EOF
 
     # Secure the configuration file

@@ -257,6 +257,9 @@ create_systemd_service() {
     local service_file="/etc/systemd/system/activemq.service"
     local activemq_home="${ALFRESCO_HOME}/activemq"
     
+    # Calculate memory allocation
+    calculate_memory_allocation
+    
     # Check if service already exists
     if [ -f "$service_file" ]; then
         log_info "ActiveMQ service file already exists, updating..."
@@ -282,8 +285,8 @@ Environment="ACTIVEMQ_BASE=${activemq_home}"
 Environment="ACTIVEMQ_CONF=${activemq_home}/conf"
 Environment="ACTIVEMQ_DATA=${activemq_home}/data"
 
-# Memory settings for ActiveMQ
-Environment="ACTIVEMQ_OPTS=-Xms256M -Xmx512M"
+# Memory settings - auto-calculated based on system RAM (${MEM_PROFILE} profile)
+Environment="ACTIVEMQ_OPTS=-Xms${MEM_ACTIVEMQ}m -Xmx${MEM_ACTIVEMQ}m -Djava.util.logging.config.file=logging.properties -Djava.security.auth.login.config=${activemq_home}/conf/login.config"
 
 ExecStart=${activemq_home}/bin/activemq start
 ExecStop=${activemq_home}/bin/activemq stop
@@ -307,7 +310,7 @@ EOF
     log_info "Reloading systemd daemon..."
     sudo systemctl daemon-reload
     
-    log_info "Systemd service created"
+    log_info "Systemd service created with heap: ${MEM_ACTIVEMQ}m"
 }
 
 # -----------------------------------------------------------------------------
