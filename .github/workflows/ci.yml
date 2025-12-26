@@ -96,66 +96,63 @@ jobs:
 
       - name: Generate configuration
         run: |
-          echo "Making scripts executable and accessible to ubuntu user..."
-          chmod -R a+rX .
+          echo "Making scripts executable..."
           chmod +x scripts/*.sh
           echo "Generating secure configuration..."
           bash scripts/00-generate-config.sh
-          # Make generated config readable by all
-          chmod 644 config/alfresco.env
           echo "Configuration generated successfully"
 
       - name: Install PostgreSQL
         run: |
           echo "=== Installing PostgreSQL ==="
-          sudo -u ubuntu bash scripts/01-install_postgres.sh
+          bash scripts/01-install_postgres.sh
 
       - name: Install Java
         run: |
           echo "=== Installing Java ==="
-          sudo -u ubuntu bash scripts/02-install_java.sh
+          bash scripts/02-install_java.sh
 
       - name: Install Tomcat
         run: |
           echo "=== Installing Tomcat ==="
-          sudo -u ubuntu bash scripts/03-install_tomcat.sh
+          bash scripts/03-install_tomcat.sh
 
       - name: Install ActiveMQ
         run: |
           echo "=== Installing ActiveMQ ==="
-          sudo -u ubuntu bash scripts/04-install_activemq.sh
+          bash scripts/04-install_activemq.sh
 
       - name: Download Alfresco Resources
         run: |
           echo "=== Downloading Alfresco Resources ==="
-          sudo -u ubuntu bash scripts/05-download_alfresco_resources.sh
+          bash scripts/05-download_alfresco_resources.sh
 
       - name: Install Alfresco
         run: |
           echo "=== Installing Alfresco ==="
-          sudo -u ubuntu bash scripts/06-install_alfresco.sh
+          bash scripts/06-install_alfresco.sh
 
       - name: Install Solr
         run: |
           echo "=== Installing Solr ==="
-          sudo -u ubuntu bash scripts/07-install_solr.sh
+          bash scripts/07-install_solr.sh
 
       - name: Install Transform Service
         run: |
           echo "=== Installing Transform Service ==="
-          sudo -u ubuntu bash scripts/08-install_transform.sh
+          bash scripts/08-install_transform.sh
 
       # Note: ACA build is optional and time-consuming
       # Uncomment if you want to test the full stack
       # - name: Build ACA
       #   run: |
       #     echo "=== Building ACA ==="
-      #     sudo -u ubuntu bash scripts/09-build_aca.sh
+      #     bash scripts/09-build_aca.sh
 
       - name: Install Nginx
         run: |
           echo "=== Installing Nginx ==="
-          sudo -u ubuntu bash scripts/10-install_nginx.sh
+          bash scripts/10-install_nginx.sh
 
       - name: Verify service files exist
         run: |
