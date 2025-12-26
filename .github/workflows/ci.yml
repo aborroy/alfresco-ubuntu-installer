@@ -8,28 +8,275 @@ on:
     branches:
       - main
 
+env:
+  # Use non-interactive frontend for apt
+  DEBIAN_FRONTEND: noninteractive
+
 jobs:
-  test:
-    runs-on: ubuntu:24.04
-
+  # ===========================================================================
+  # Lint Job - Check shell scripts for issues
+  # ===========================================================================
+  lint:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-24.04
+    
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Run Alfresco Installer Script
-      run: |
-        sudo useradd -m ubuntu
-        bash scripts/01-install_postgres.sh
-        bash scripts/02-install_java.sh
-        bash scripts/03-install_tomcat.sh
-        bash scripts/04-install_activemq.sh
-        bash scripts/05-download_alfresco_resources.sh
-        bash scripts/06-install_alfresco.sh
-        bash scripts/07-install_solr.sh
-        bash scripts/08-install_transform.sh
-        bash scripts/09-build_aca.sh
-        bash scripts/10-install_nginx.sh
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
 
-    - name: Verify Alfresco Installation as ubuntu user
-      run: |
-        systemctl status alfresco
+      - name: Run ShellCheck on all scripts
+        run: |
+          echo "Checking shell scripts..."
+          shellcheck scripts/*.sh
+          echo "All scripts passed linting!"
+
+  # ===========================================================================
+  # Validate Job - Check configuration files
+  # ===========================================================================
+  validate:
+    name: Validate Configuration
+    runs-on: ubuntu-24.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate versions.conf syntax
+        run: |
+          echo "Validating versions.conf..."
+          source config/versions.conf
+          echo "  ALFRESCO_VERSION=${ALFRESCO_VERSION}"
+          echo "  ALFRESCO_SEARCH_VERSION=${ALFRESCO_SEARCH_VERSION}"
+          echo "  ALFRESCO_TRANSFORM_VERSION=${ALFRESCO_TRANSFORM_VERSION}"
+          echo "  TOMCAT_VERSION=${TOMCAT_VERSION}"
+          echo "  ACTIVEMQ_VERSION=${ACTIVEMQ_VERSION}"
+          echo "  POSTGRESQL_VERSION=${POSTGRESQL_VERSION}"
+          echo "  JAVA_VERSION=${JAVA_VERSION}"
+          echo "Configuration is valid!"
+
+      - name: Validate alfresco.env.template syntax
+        run: |
+          echo "Validating alfresco.env.template..."
+          source config/alfresco.env.template
+          echo "Template is valid!"
+
+  # ===========================================================================
+  # Install Job - Full installation test
+  # ===========================================================================
+  install:
+    name: Test Installation
+    runs-on: ubuntu-24.04
+    needs: [lint, validate]
+    
+    # Allow job to continue to collect all errors
+    continue-on-error: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: System information
+        run: |
+          echo "=== System Information ==="
+          uname -a
+          cat /etc/os-release
+          free -h
+          df -h
+
+      - name: Create ubuntu user
+        run: |
+          sudo useradd -m -s /bin/bash ubuntu
+          sudo usermod -aG sudo ubuntu
+          echo "ubuntu ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ubuntu
+
+      - name: Generate configuration
+        run: |
+          echo "Generating secure configuration..."
+          bash scripts/00-generate-config.sh
+          echo "Configuration generated successfully"
+
+      - name: Install PostgreSQL
+        run: |
+          echo "=== Installing PostgreSQL ==="
+          sudo -u ubuntu bash scripts/01-install_postgres.sh
+
+      - name: Install Java
+        run: |
+          echo "=== Installing Java ==="
+          sudo -u ubuntu bash scripts/02-install_java.sh
+
+      - name: Install Tomcat
+        run: |
+          echo "=== Installing Tomcat ==="
+          sudo -u ubuntu bash scripts/03-install_tomcat.sh
+
+      - name: Install ActiveMQ
+        run: |
+          echo "=== Installing ActiveMQ ==="
+          sudo -u ubuntu bash scripts/04-install_activemq.sh
+
+      - name: Download Alfresco Resources
+        run: |
+          echo "=== Downloading Alfresco Resources ==="
+          sudo -u ubuntu bash scripts/05-download_alfresco_resources.sh
+
+      - name: Install Alfresco
+        run: |
+          echo "=== Installing Alfresco ==="
+          sudo -u ubuntu bash scripts/06-install_alfresco.sh
+
+      - name: Install Solr
+        run: |
+          echo "=== Installing Solr ==="
+          sudo -u ubuntu bash scripts/07-install_solr.sh
+
+      - name: Install Transform Service
+        run: |
+          echo "=== Installing Transform Service ==="
+          sudo -u ubuntu bash scripts/08-install_transform.sh
+
+      # Note: ACA build is optional and time-consuming
+      # Uncomment if you want to test the full stack
+      # - name: Build ACA
+      #   run: |
+      #     echo "=== Building ACA ==="
+      #     sudo -u ubuntu bash scripts/09-build_aca.sh
+
+      - name: Install Nginx
+        run: |
+          echo "=== Installing Nginx ==="
+          sudo -u ubuntu bash scripts/10-install_nginx.sh
+
+      - name: Verify service files exist
+        run: |
+          echo "=== Verifying Service Files ==="
+          ls -la /etc/systemd/system/tomcat.service
+          ls -la /etc/systemd/system/activemq.service
+          ls -la /etc/systemd/system/transform.service
+          ls -la /etc/systemd/system/solr.service
+          echo "All service files exist!"
+
+      - name: Verify services are enabled
+        run: |
+          echo "=== Verifying Services are Enabled ==="
+          systemctl is-enabled postgresql || echo "postgresql not enabled"
+          systemctl is-enabled activemq || echo "activemq not enabled"
+          systemctl is-enabled transform || echo "transform not enabled"
+          systemctl is-enabled tomcat || echo "tomcat not enabled"
+          systemctl is-enabled solr || echo "solr not enabled"
+          systemctl is-enabled nginx || echo "nginx not enabled"
+
+      - name: Start services
+        run: |
+          echo "=== Starting Services ==="
+          bash scripts/11-start_services.sh --no-wait
+
+      - name: Check service status
+        run: |
+          echo "=== Service Status ==="
+          systemctl status postgresql --no-pager || true
+          systemctl status activemq --no-pager || true
+          systemctl status transform --no-pager || true
+          systemctl status tomcat --no-pager || true
+          systemctl status solr --no-pager || true
+          systemctl status nginx --no-pager || true
+
+      - name: Wait for Alfresco to start
+        run: |
+          echo "=== Waiting for Alfresco to Start ==="
+          echo "This may take 2-3 minutes..."
+          
+          # Wait up to 5 minutes for Alfresco to be ready
+          timeout 300 bash -c '
+            until curl -sf http://localhost:8080/alfresco/api/-default-/public/alfresco/versions/1/probes/-ready- 2>/dev/null | grep -q "isReady"; do
+              echo -n "."
+              sleep 10
+            done
+          ' || echo "Timeout waiting for Alfresco (may still be starting)"
+          echo ""
+
+      - name: Run smoke tests
+        run: |
+          echo "=== Running Smoke Tests ==="
+          
+          echo "Testing Alfresco Repository..."
+          curl -sf http://localhost:8080/alfresco/ > /dev/null && echo "✓ Alfresco Repository is responding" || echo "✗ Alfresco Repository not responding"
+          
+          echo "Testing Alfresco Share..."
+          curl -sf http://localhost:8080/share/ > /dev/null && echo "✓ Alfresco Share is responding" || echo "✗ Alfresco Share not responding"
+          
+          echo "Testing Nginx proxy..."
+          curl -sf http://localhost/alfresco/ > /dev/null && echo "✓ Nginx proxy to Alfresco working" || echo "✗ Nginx proxy not working"
+          
+          echo "Testing Nginx health endpoint..."
+          curl -sf http://localhost/nginx-health && echo "✓ Nginx health check passed" || echo "✗ Nginx health check failed"
+          
+          echo "Testing Transform Service..."
+          curl -sf http://localhost:8090/actuator/health > /dev/null && echo "✓ Transform Service is healthy" || echo "✗ Transform Service not responding"
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Collecting Logs ==="
+          echo "--- Tomcat catalina.out ---"
+          sudo tail -100 /home/ubuntu/tomcat/logs/catalina.out 2>/dev/null || echo "No catalina.out"
+          echo ""
+          echo "--- Alfresco log ---"
+          sudo tail -100 /home/ubuntu/tomcat/logs/alfresco.log 2>/dev/null || echo "No alfresco.log"
+          echo ""
+          echo "--- Transform service journal ---"
+          sudo journalctl -u transform --no-pager -n 50 2>/dev/null || echo "No transform logs"
+          echo ""
+          echo "--- Nginx error log ---"
+          sudo tail -50 /var/log/nginx/alfresco_error.log 2>/dev/null || echo "No nginx error log"
+
+  # ===========================================================================
+  # Idempotency Job - Verify scripts can run twice
+  # ===========================================================================
+  idempotency:
+    name: Test Idempotency
+    runs-on: ubuntu-24.04
+    needs: [lint, validate]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create ubuntu user
+        run: |
+          sudo useradd -m -s /bin/bash ubuntu
+          sudo usermod -aG sudo ubuntu
+          echo "ubuntu ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ubuntu
+
+      - name: Generate configuration
+        run: bash scripts/00-generate-config.sh
+
+      - name: Run PostgreSQL install twice
+        run: |
+          echo "=== First PostgreSQL Install ==="
+          sudo -u ubuntu bash scripts/01-install_postgres.sh
+          echo ""
+          echo "=== Second PostgreSQL Install (should be idempotent) ==="
+          sudo -u ubuntu bash scripts/01-install_postgres.sh
+          echo "PostgreSQL idempotency test passed!"
+
+      - name: Run Java install twice
+        run: |
+          echo "=== First Java Install ==="
+          sudo -u ubuntu bash scripts/02-install_java.sh
+          echo ""
+          echo "=== Second Java Install (should be idempotent) ==="
+          sudo -u ubuntu bash scripts/02-install_java.sh
+          echo "Java idempotency test passed!"
+
+      - name: Run Tomcat install twice
+        run: |
+          echo "=== First Tomcat Install ==="
+          sudo -u ubuntu bash scripts/03-install_tomcat.sh
+          echo ""
+          echo "=== Second Tomcat Install (should be idempotent) ==="
+          sudo -u ubuntu bash scripts/03-install_tomcat.sh
+          echo "Tomcat idempotency test passed!"

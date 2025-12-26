@@ -1,91 +1,85 @@
-# Alfresco installation in Ubuntu using ZIP Distribution Files
+# Alfresco Ubuntu Installer
 
-Alfresco Platform provides flexibility in deployment, accommodating various infrastructures and operational preferences. 
+[![CI - Test Alfresco Ubuntu Installer](https://github.com/YOUR_ORG/alfresco-ubuntu-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/alfresco-ubuntu-installer/actions/workflows/ci.yml)
 
-Below are several deployment approaches:
+Automated installation scripts for deploying **Alfresco Content Services Community Edition** on Ubuntu using ZIP distribution files.
 
-**[ZIP Distribution files](https://docs.alfresco.com/content-services/latest/install/zip/)**
+## Overview
 
-Deploying Alfresco using ZIP distribution files involves manually configuring and installing Alfresco on servers. This approach allows for detailed customization of the installation process, making it suitable for environments where specific configurations or integrations are required.
+This project provides a collection of bash scripts to automate the installation and configuration of Alfresco Content Services on Ubuntu 22.04/24.04 LTS. The scripts are designed to be:
 
-**[Ansible](https://docs.alfresco.com/content-services/latest/install/ansible/)**
+- **Idempotent** - Safe to run multiple times without causing errors
+- **Configurable** - All settings externalized to configuration files
+- **Secure** - Credentials auto-generated, no hardcoded passwords
+- **Production-ready** - Proper systemd services, health checks, and logging
 
-Ansible automation simplifies the deployment and management of Alfresco across multiple servers. Ansible playbooks automate the installation and configuration tasks, ensuring consistency and reducing deployment time. This method is ideal for environments requiring rapid deployment and scalability.
+## Deployment Options
 
-**[Containers](https://docs.alfresco.com/content-services/latest/install/containers/)**
+Alfresco Platform supports multiple deployment approaches:
 
-Containerization of Alfresco leverages Docker and Kubernetes technologies, offering a modern approach to deployment:
+| Method | Best For | Documentation |
+|--------|----------|---------------|
+| **ZIP Distribution** (this project) | Custom deployments, learning | [Alfresco Docs](https://docs.alfresco.com/content-services/latest/install/zip/) |
+| **Ansible** | Multi-server automation | [Ansible Docs](https://docs.alfresco.com/content-services/latest/install/ansible/) |
+| **Docker Compose** | Development, small production | [Docker Docs](https://docs.alfresco.com/content-services/latest/install/containers/docker-compose/) |
+| **Helm/Kubernetes** | Enterprise production | [Helm Docs](https://docs.alfresco.com/content-services/latest/install/containers/helm/) |
 
-   - **[Docker Compose](https://docs.alfresco.com/content-services/latest/install/containers/docker-compose/)**: Docker Compose simplifies the orchestration of multiple Alfresco services, such as Alfresco Content Repository, ActiveMQ, Elasticsearch, and others, defined in a single YAML file. It facilitates deployment in development, testing, and small-scale production environments.
+## Prerequisites
 
-   - **[Helm](https://docs.alfresco.com/content-services/latest/install/containers/helm/)**: Helm charts streamline the deployment of Alfresco on Kubernetes clusters. Helm manages Kubernetes applications through easy-to-use templates (charts) and package management. It enables scalability, version control, and rollback capabilities, making it suitable for production-grade deployments.
+### Hardware Requirements
 
-This project provides a sample **ZIP Distribution Files** configuration for deploying the Alfresco Platform.
+| Deployment | CPU | RAM | Disk |
+|------------|-----|-----|------|
+| Development | 2+ cores | 8 GB | 20 GB |
+| Small Production | 4+ cores | 16 GB | 100 GB |
+| Large Production | 8+ cores | 32 GB+ | 500 GB+ |
 
-## Contents
+### Software Requirements
 
-This project provides a collection of `bash` scripts designed to automate various installation and setup tasks on an Ubuntu system. Each script handles a specific component or service, ensuring a streamlined and repeatable setup process. Below is a list of the available scripts along with their descriptions:
+- **Ubuntu** 22.04 LTS or 24.04 LTS (fresh installation recommended)
+- **User** with sudo privileges
+- **Internet connectivity** for downloading packages
 
-1. **PostgreSQL Installation**
-   - Script: [01-install_postgres.sh](scripts/01-install_postgres.sh)
-   - Description: Installs and configures PostgreSQL, to be used as object-relational database system.
+### Network Ports
 
-2. **Java Installation**
-   - Script: [02-install_java.sh](scripts/02-install_java.sh)
-   - Description: Installs Java Development Kit (JDK), essential for running Apache Tomcat and Java applications like Apache Solr, Apache ActiveMQ and Transform Service.
+Ensure these ports are available:
 
-3. **Tomcat Installation**
-   - Script: [03-install_tomcat.sh](scripts/03-install_tomcat.sh)
-   - Description: Installs Apache Tomcat, to deploy Alfresco and Share web applications.
+| Port | Service | Description |
+|------|---------|-------------|
+| 80 | Nginx | HTTP (external access) |
+| 443 | Nginx | HTTPS (optional) |
+| 5432 | PostgreSQL | Database |
+| 8080 | Tomcat | Alfresco/Share (internal) |
+| 8090 | Transform | Document transformation |
+| 8161 | ActiveMQ | Web console |
+| 8983 | Solr | Search service |
+| 61616 | ActiveMQ | OpenWire protocol |
 
-4. **ActiveMQ Installation**
-   - Script: [04-install_activemq.sh](scripts/04-install_activemq.sh)
-   - Description: Installs Apache ActiveMQ, to be used as messaging server.
+## Quick Start
 
-5. **Alfresco Resources Download**
-   - Script: [05-download_alfresco_resources.sh](scripts/05-download_alfresco_resources.sh)
-   - Description: Downloads necessary resources for Alfresco, including web applications, search service and transform service.
-
-6. **Alfresco Installation**
-   - Script: [06-install_alfresco.sh](scripts/06-install_alfresco.sh)
-   - Description: Installs Alfresco Community Edition, configuring Alfresco and Share web applications.
-   - **TIP**: If you use different port numbers for alfresco.port and share.port e.g. alfresco.port=39003 and share.port=39003. Ensure you adjust the same in the following files:
-       
-         ● 10-install_nginx.sh
-         ● /home/ubuntu/tomcat/conf/server.xml
-         ● /home/ubuntu/tomcat/shared/classes/alfresco/web-extension/share-config-custom.xml
-         ● /home/ubuntu/alfresco-search-services/solrhome/archive/conf/solrcore.properties
-         ● /home/ubuntu/alfresco-search-services/solrhome/templates/noRerank/conf/solrcore.properties
-         ● /home/ubuntu/alfresco-search-services/solrhome/templates/rerank/conf/solrcore.properties 
-         ● /home/ubuntu/alfresco-search-services/solrhome/alfresco/conf/solrcore.properties 
-    
-   Otherwise, alfresco, solr and share wouldn't work properly i.e., alfresco and share won't allow you to login and solr won't be able to search properly.
-
-7. **Solr Installation**
-   - Script: [07-install_solr.sh](scripts/07-install_solr.sh)
-   - Description: Installs Apache Solr, to be used as search platform for indexing and searching data.
-
-8. **Transform Service Installation**
-   - Script: [08-install_transform.sh](scripts/08-install_transform.sh)
-   - Description: Installs services required for document transformations within Alfresco.
-
-9. **Alfresco Content App Building**
-   - Script: [09-build_aca.sh](scripts/09-build_aca.sh)
-   - Description: Builds static website from NodeJS application ACA. *This task can be performed in a separate server or machine.*
-
-10. **Nginx Installation**
-   - Script: [10-install_nginx.sh](scripts/10-install_nginx.sh)
-   - Description: Installs web server for ACA and configure web proxy for Alfresco and Share web applications.   
-
-11. **Start Services**
-   - Script: [11-start_services.sh](scripts/11-start_services.sh)
-   - Description: Starts all the installed services to ensure they are running correctly.
-
-## Usage
-
-Each script can be executed individually in a bash shell. Despiste user `ubuntu` is expected to be used, ensure you have the necessary permissions (e.g., using `sudo` where required).
+### 1. Clone the Repository
 
 ```bash
+git clone https://github.com/YOUR_ORG/alfresco-ubuntu-installer.git
+cd alfresco-ubuntu-installer
+```
+
+### 2. Generate Configuration
+
+```bash
+bash scripts/00-generate-config.sh
+```
+
+This creates `config/alfresco.env` with secure random passwords. Review and customize if needed:
+
+```bash
+cat config/alfresco.env
+```
+
+### 3. Run Installation Scripts
+
+```bash
+# Install all components
 bash scripts/01-install_postgres.sh
 bash scripts/02-install_java.sh
 bash scripts/03-install_tomcat.sh
@@ -94,106 +88,319 @@ bash scripts/05-download_alfresco_resources.sh
 bash scripts/06-install_alfresco.sh
 bash scripts/07-install_solr.sh
 bash scripts/08-install_transform.sh
-bash scripts/09-build_aca.sh
+bash scripts/09-build_aca.sh      # Optional: builds Alfresco Content App
 bash scripts/10-install_nginx.sh
 ```
 
-Although the `11-start_services.sh` script includes the sequence for executing the services, it is recommended to run each line manually. This allows you to verify that each service is up and running correctly before proceeding to the next one.
+### 4. Start Services
+
+```bash
+bash scripts/11-start_services.sh
+```
+
+The script starts all services in the correct order with health checks.
+
+### 5. Access Alfresco
+
+| Application | URL | Default Credentials |
+|-------------|-----|---------------------|
+| Alfresco Content App | http://localhost/ | admin / admin |
+| Alfresco Repository | http://localhost/alfresco/ | admin / admin |
+| Alfresco Share | http://localhost/share/ | admin / admin |
+| Solr Admin | http://localhost:8983/solr/ | (uses secret header) |
+| ActiveMQ Console | http://localhost:8161/ | (see config) |
+
+## Project Structure
+
+```
+alfresco-ubuntu-installer/
+├── config/
+│   ├── alfresco.env.template    # Configuration template
+│   ├── alfresco.env             # Your configuration (gitignored)
+│   └── versions.conf            # Pinned component versions
+├── scripts/
+│   ├── common.sh                # Shared functions
+│   ├── 00-generate-config.sh    # Generate secure configuration
+│   ├── 01-install_postgres.sh   # PostgreSQL database
+│   ├── 02-install_java.sh       # Java JDK
+│   ├── 03-install_tomcat.sh     # Apache Tomcat
+│   ├── 04-install_activemq.sh   # Apache ActiveMQ
+│   ├── 05-download_alfresco_resources.sh  # Download artifacts
+│   ├── 06-install_alfresco.sh   # Alfresco + Share
+│   ├── 07-install_solr.sh       # Alfresco Search Services
+│   ├── 08-install_transform.sh  # Transform Service
+│   ├── 09-build_aca.sh          # Alfresco Content App
+│   ├── 10-install_nginx.sh      # Nginx reverse proxy
+│   └── 11-start_services.sh     # Start all services
+├── downloads/                    # Downloaded artifacts (gitignored)
+├── .github/workflows/
+│   └── ci.yml                   # CI/CD pipeline
+└── README.md
+```
+
+## Configuration
+
+### Version Configuration (`config/versions.conf`)
+
+Pinned, tested version combinations:
+
+```bash
+# Alfresco Components
+ALFRESCO_VERSION="23.2.1"
+ALFRESCO_SEARCH_VERSION="2.0.8.2"
+ALFRESCO_TRANSFORM_VERSION="5.1.7"
+
+# Infrastructure
+POSTGRESQL_VERSION="16"
+TOMCAT_VERSION="10.1.28"
+ACTIVEMQ_VERSION="6.1.2"
+JAVA_VERSION="17"
+
+# Frontend
+ACA_VERSION="5.0.0"
+NODEJS_VERSION="20"
+```
+
+### Environment Configuration (`config/alfresco.env`)
+
+Generated by `00-generate-config.sh` with secure random passwords:
+
+```bash
+# Database
+ALFRESCO_DB_HOST="localhost"
+ALFRESCO_DB_PORT="5432"
+ALFRESCO_DB_NAME="alfresco"
+ALFRESCO_DB_USER="alfresco"
+ALFRESCO_DB_PASSWORD="<auto-generated>"
+
+# Solr
+SOLR_HOST="localhost"
+SOLR_PORT="8983"
+SOLR_SHARED_SECRET="<auto-generated>"
+
+# And more...
+```
+
+## Component Details
+
+### 1. PostgreSQL
+
+- **Version**: 16
+- **Port**: 5432
+- **Data**: `/var/lib/postgresql/16`
+- **Logs**: `/var/log/postgresql`
+
+### 2. Java JDK
+
+- **Version**: 17 (OpenJDK)
+- **JAVA_HOME**: `/usr/lib/jvm/java-17-openjdk-amd64`
+- **Architecture**: Auto-detected (amd64/arm64)
+
+### 3. Apache Tomcat
+
+- **Version**: 10.1.28
+- **Home**: `/home/ubuntu/tomcat`
+- **Logs**: `/home/ubuntu/tomcat/logs`
+- **Memory**: Configurable via `TOMCAT_XMS`/`TOMCAT_XMX`
+
+### 4. Apache ActiveMQ
+
+- **Version**: 6.1.2
+- **Home**: `/home/ubuntu/activemq`
+- **OpenWire Port**: 61616
+- **Web Console**: 8161
+
+### 5. Alfresco Content Services
+
+- **Version**: 23.2.1 Community
+- **Context**: `/alfresco`
+- **Data**: `/home/ubuntu/alf_data`
+- **Config**: `/home/ubuntu/tomcat/shared/classes/alfresco-global.properties`
+
+### 6. Alfresco Share
+
+- **Context**: `/share`
+- **Logs**: `/home/ubuntu/tomcat/logs/share.log`
+
+### 7. Alfresco Search Services (Solr)
+
+- **Version**: 2.0.8.2
+- **Home**: `/home/ubuntu/alfresco-search-services`
+- **Port**: 8983
+- **Authentication**: Shared secret
+
+### 8. Transform Service
+
+- **Version**: 5.1.7 (All-In-One)
+- **Home**: `/home/ubuntu/transform`
+- **Port**: 8090
+- **Dependencies**: ImageMagick, LibreOffice, ExifTool
+
+### 9. Alfresco Content App
+
+- **Version**: 5.0.0
+- **Source**: `/home/ubuntu/alfresco-content-app`
+- **Build Output**: `/home/ubuntu/alfresco-content-app/dist/content-ce`
+
+### 10. Nginx
+
+- **Port**: 80
+- **Config**: `/etc/nginx/sites-available/alfresco`
+- **Web Root**: `/var/www/alfresco-content-app`
+- **Logs**: `/var/log/nginx/alfresco_*.log`
+
+## Service Management
+
+### Start All Services
+
+```bash
+bash scripts/11-start_services.sh
+```
+
+### Start Individual Services
 
 ```bash
 sudo systemctl start postgresql
-sudo systemctl status postgresql
-● postgresql.service - PostgreSQL RDBMS
-     Loaded: loaded (/usr/lib/systemd/system/postgresql.service; enabled; preset: ena>
-     Active: active (exited) since Mon 2024-07-29 09:46:15 UTC; 19s ago
-```
-
-```bash
 sudo systemctl start activemq
-sudo systemctl status activemq
-● activemq.service - Apache ActiveMQ
-     Loaded: loaded (/etc/systemd/system/activemq.service; enabled; preset: enabled)
-     Active: active (running) since Mon 2024-07-29 09:46:56 UTC; 6s ago
-```
-
-```bash
 sudo systemctl start transform
-sudo systemctl status transform
-● transform.service - Transform Application Container
-     Loaded: loaded (/etc/systemd/system/transform.service; enabled; preset: enabled)
-     Active: active (running) since Mon 2024-07-29 09:47:33 UTC; 8s ago
-```
-
-```bash
 sudo systemctl start tomcat
-sudo systemctl status tomcat
-● tomcat.service - Apache Tomcat Web Application Container
-     Loaded: loaded (/etc/systemd/system/tomcat.service; enabled; preset: enabled)
-     Active: active (running) since Mon 2024-07-29 09:48:15 UTC; 7s ago
-tail -f /home/ubuntu/tomcat/logs/catalina.out
-...
-29-Jul-2024 09:49:08.922 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [52678] milliseconds
-```
-
-```bash
 sudo systemctl start solr
-sudo systemctl status solr
-● solr.service - Apache SOLR Web Application Container
-     Loaded: loaded (/etc/systemd/system/solr.service; enabled; preset: enabled)
-     Active: active (running) since Mon 2024-07-29 09:49:32 UTC; 11s ago
+sudo systemctl start nginx
 ```
+
+### Check Service Status
 
 ```bash
-sudo systemctl start nginx
-sudo systemctl status nginx
+sudo systemctl status postgresql activemq transform tomcat solr nginx
 ```
 
-## Verification
+### View Logs
 
-Default credentials are `admin`/`admin`
+```bash
+# Alfresco logs
+tail -f /home/ubuntu/tomcat/logs/catalina.out
+tail -f /home/ubuntu/tomcat/logs/alfresco.log
 
-* Alfresco Repository: http://localhost/alfresco
+# Solr logs
+tail -f /home/ubuntu/alfresco-search-services/logs/solr.log
 
-* ACA UI: http://localhost/
-
-* Share UI: http://localhost/share
-  - Search "budget" >> 4 results found
-  - Access to document "Meeting Notes 2011-01-27.doc" in folder "Meeting Notes" of site "swsdp". PDF Preview must be available.
+# Nginx logs
+tail -f /var/log/nginx/alfresco_access.log
+tail -f /var/log/nginx/alfresco_error.log
+```
 
 ## Troubleshooting
 
-If you encounter issues while using the project, refer to the specific service sections below for credentials, port information, data directories, and log file locations. This guide provides essential details for managing and diagnosing problems with PostgreSQL, Tomcat, ActiveMQ, Solr, Transform Service, and Nginx.
+### Alfresco Won't Start
 
-1. **PostgreSQL**
-   - **Credentials:** `alfresco/alfresco`
-   - **Port:** `5432`
-   - **Data Directory:** `/var/lib/postgresql/16`
-   - **Log Directory:** `/var/log/postgresql`
+1. **Check Tomcat logs**:
+   ```bash
+   tail -100 /home/ubuntu/tomcat/logs/catalina.out
+   ```
 
-2. **Tomcat (Alfresco + Share)**
-   - **Credentials:** `admin/admin`
-   - **Port:** `8080`
-   - **Data Directory:** `/home/ubuntu/alf_data` (Alfresco filesystem)
-   - **Log Directory:** `/home/ubuntu/tomcat/logs`
+2. **Verify database connection**:
+   ```bash
+   PGPASSWORD=$(grep ALFRESCO_DB_PASSWORD config/alfresco.env | cut -d= -f2) \
+     psql -h localhost -U alfresco -d alfresco -c "SELECT 1"
+   ```
 
-3. **ActiveMQ**
-   - **Credentials:** `admin/admin`
-   - **Ports:**
-     - Web Console: `8161`
-     - OpenWire: `61616`
-   - **Data Directory:** `/home/ubuntu/activemq/data`
-   - **Log Directory:** `/home/ubuntu/activemq/data`
+3. **Check memory**:
+   ```bash
+   free -h
+   ```
 
-4. **Solr**
-   - **Credentials:** HTTP Header with `X-Alfresco-Search-Secret: secret`
-   - **Port:** `8983`
-   - **Data Directory:** `/home/ubuntu/alfresco-search-services/solrhome`
-   - **Log Directory:** `/home/ubuntu/alfresco-search-services/logs`
+### Solr Not Indexing
 
-5. **Transform Service**
-   - **Port:** `8090`
-   - **Logs URL:** [http://localhost:8090/log](http://localhost:8090/log)
+1. **Check Solr is running**:
+   ```bash
+   curl -H "X-Alfresco-Search-Secret: $(grep SOLR_SHARED_SECRET config/alfresco.env | cut -d= -f2)" \
+     http://localhost:8983/solr/alfresco/admin/ping
+   ```
 
-6. **Nginx**
-   - **Port:** `80`
-   - **Log Directory:** `/var/log/nginx/`
+2. **Verify shared secret matches** in both:
+   - `/home/ubuntu/tomcat/shared/classes/alfresco-global.properties`
+   - `/home/ubuntu/alfresco-search-services/solrhome/conf/shared.properties`
+
+### Transform Service Errors
+
+1. **Check health endpoint**:
+   ```bash
+   curl http://localhost:8090/actuator/health
+   ```
+
+2. **Verify LibreOffice is installed**:
+   ```bash
+   soffice --version
+   ```
+
+### Port Conflicts
+
+If you need to change ports, update:
+
+1. `config/alfresco.env` - Update the port variables
+2. Re-run the relevant installation script
+3. Restart services
+
+## Multi-Machine Deployment
+
+For production deployments across multiple machines:
+
+1. **Edit `config/alfresco.env`** to set correct hostnames:
+   ```bash
+   ALFRESCO_DB_HOST="db.example.com"
+   SOLR_HOST="search.example.com"
+   ACTIVEMQ_HOST="mq.example.com"
+   ```
+
+2. **Run only relevant scripts** on each machine:
+   - Database server: `01-install_postgres.sh`
+   - Application server: `02-06` and `08`
+   - Search server: `02` and `07`
+   - Web server: `09-10`
+
+3. **Ensure network connectivity** between machines on required ports.
+
+## Security Considerations
+
+1. **Change default admin password** after first login
+2. **Configure HTTPS** in Nginx for production
+3. **Restrict network access** to internal ports (8080, 8983, etc.)
+4. **Keep `config/alfresco.env` secure** - it contains passwords
+5. **Regular backups** of `/home/ubuntu/alf_data` and PostgreSQL
+
+## Upgrading
+
+To upgrade components:
+
+1. Update versions in `config/versions.conf`
+2. Re-run the relevant installation script
+3. Restart services
+
+For Transform Service (uses symlink):
+```bash
+# Copy new JAR
+cp new-transform-core-aio-X.Y.Z.jar /home/ubuntu/transform/
+
+# Update symlink
+ln -sf alfresco-transform-core-aio-X.Y.Z.jar /home/ubuntu/transform/alfresco-transform-core-aio.jar
+
+# Restart
+sudo systemctl restart transform
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run `shellcheck scripts/*.sh` to lint
+5. Submit a pull request
+
+## License
+
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+- [Alfresco](https://www.alfresco.com/) for the Content Services platform
+- [Apache Software Foundation](https://apache.org/) for Tomcat, ActiveMQ, and Solr
