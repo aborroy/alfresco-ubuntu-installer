@@ -181,9 +181,8 @@ download_alfresco_distribution() {
         log_error "Failed to download Alfresco Content Services"
         exit 1
     fi
-    
-    # Store filename for later use
-    ALFRESCO_DISTRIBUTION_FILE="$dest_file"
+
+    # File downloaded successfully    
 }
 
 # -----------------------------------------------------------------------------
@@ -203,8 +202,8 @@ download_search_services() {
         exit 1
     fi
     
-    # Store filename for later use
-    ALFRESCO_SEARCH_FILE="$dest_file"
+    # File downloaded successfully
+
 }
 
 # -----------------------------------------------------------------------------
@@ -224,8 +223,7 @@ download_transform_core() {
         exit 1
     fi
     
-    # Store filename for later use
-    ALFRESCO_TRANSFORM_FILE="$dest_file"
+    # File downloaded successfully    
 }
 
 # -----------------------------------------------------------------------------
