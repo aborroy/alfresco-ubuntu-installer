@@ -143,10 +143,10 @@ configure_tomcat_shared() {
     local shared_lib="$tomcat_home/shared/lib"
     
     # Create shared directories
-    mkdir -p "$shared_classes" "$shared_lib"
+    sudo mkdir -p "$shared_classes" "$shared_lib"
     
     # Check if already configured
-    if grep -q 'shared.loader=.*shared/classes' "$catalina_props" 2>/dev/null; then
+    if sudo grep -q 'shared.loader=.*shared/classes' "$catalina_props" 2>/dev/null; then
         log_info "Tomcat shared loader already configured"
         return 0
     fi
@@ -158,7 +158,7 @@ configure_tomcat_shared() {
     # Note: ${catalina.base} is a Tomcat variable, not a shell variable
     log_info "Updating catalina.properties..."
     # shellcheck disable=SC2016
-    sed -i 's|^shared.loader=$|shared.loader=${catalina.base}/shared/classes,${catalina.base}/shared/lib/*.jar|' "$catalina_props"
+    sudo sed -i 's|^shared.loader=$|shared.loader=${catalina.base}/shared/classes,${catalina.base}/shared/lib/*.jar|' "$catalina_props"
     
     log_info "Tomcat shared loader configured"
 }
@@ -178,7 +178,7 @@ extract_alfresco_distribution() {
         rm -rf "$TEMP_DIR"
     fi
     
-    mkdir -p "$TEMP_DIR"
+    sudo mkdir -p "$TEMP_DIR"
     
     log_info "Extracting $(basename "$dist_file")..."
     unzip -q "$dist_file" -d "$TEMP_DIR"
@@ -215,7 +215,7 @@ install_jdbc_driver() {
     if [ -f "$jdbc_dest" ]; then
         log_info "JDBC driver already installed: $(basename "$jdbc_source")"
     else
-        cp "$jdbc_source" "$tomcat_home/shared/lib/"
+        sudo cp "$jdbc_source" "$tomcat_home/shared/lib/"
         log_info "Installed JDBC driver: $(basename "$jdbc_source")"
     fi
 }
@@ -241,7 +241,7 @@ install_web_applications() {
                 backup_file "$webapps_dest/$war_name"
             fi
             
-            cp "$war" "$webapps_dest/"
+            sudo cp "$war" "$webapps_dest/"
             log_info "Installed: $war_name"
         fi
     done
@@ -249,16 +249,16 @@ install_web_applications() {
     # Copy shared classes
     if [ -d "$ALFRESCO_DIST_DIR/web-server/shared/classes" ]; then
         log_info "Copying shared classes..."
-        cp -r "$ALFRESCO_DIST_DIR/web-server/shared/classes/"* "$tomcat_home/shared/classes/"
+        sudo cp -r "$ALFRESCO_DIST_DIR/web-server/shared/classes/"* "$tomcat_home/shared/classes/"
     fi
     
     # Copy context files
     local catalina_conf="$tomcat_home/conf/Catalina/localhost"
-    mkdir -p "$catalina_conf"
+    sudo mkdir -p "$catalina_conf"
     
     if [ -d "$ALFRESCO_DIST_DIR/web-server/conf/Catalina/localhost" ]; then
         log_info "Copying Catalina context files..."
-        cp "$ALFRESCO_DIST_DIR/web-server/conf/Catalina/localhost/"* "$catalina_conf/"
+        sudo cp "$ALFRESCO_DIST_DIR/web-server/conf/Catalina/localhost/"* "$catalina_conf/"
     fi
 }
 
@@ -275,18 +275,18 @@ install_keystore() {
         return 0
     fi
     
-    mkdir -p "$keystore_dest"
+    sudo mkdir -p "$keystore_dest"
     
     if [ -d "$ALFRESCO_DIST_DIR/keystore" ]; then
-        cp -r "$ALFRESCO_DIST_DIR/keystore/"* "$keystore_dest/"
+        sudo cp -r "$ALFRESCO_DIST_DIR/keystore/"* "$keystore_dest/"
         log_info "Keystore installed to: $keystore_dest"
     else
         log_warn "Keystore not found in distribution"
     fi
     
     # Secure keystore
-    chmod 700 "$keystore_dest"
-    find "$keystore_dest" -type f -exec chmod 600 {} \;
+    sudo chmod 700 "$keystore_dest"
+    sudo find "$keystore_dest" -type f -exec chmod 600 {} \;
 }
 
 # -----------------------------------------------------------------------------
@@ -300,13 +300,13 @@ create_data_directory() {
     if [ -d "$alf_data" ]; then
         log_info "Data directory already exists: $alf_data"
     else
-        mkdir -p "$alf_data"
+        sudo mkdir -p "$alf_data"
         log_info "Created data directory: $alf_data"
     fi
     
     # Create subdirectories
-    mkdir -p "$alf_data/contentstore"
-    mkdir -p "$alf_data/contentstore.deleted"
+    sudo mkdir -p "$alf_data/contentstore"
+    sudo mkdir -p "$alf_data/contentstore.deleted"
 }
 
 # -----------------------------------------------------------------------------
@@ -319,11 +319,11 @@ create_alfresco_global_properties() {
     local props_file="$tomcat_home/shared/classes/alfresco-global.properties"
     
     # Backup if exists
-    if [ -f "$props_file" ]; then
+    if sudo test -f "$props_file"; then
         backup_file "$props_file"
     fi
     
-    cat << EOF > "$props_file"
+    sudo tee "$props_file" > /dev/null << EOF
 # =============================================================================
 # Alfresco Global Properties
 # =============================================================================
@@ -424,8 +424,8 @@ smart.folders.enabled=false
 EOF
 
     # Secure the properties file
-    chmod 600 "$props_file"
-    chown "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "$props_file"
+    sudo chmod 600 "$props_file"
+    sudo chown "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "$props_file"
     
     log_info "Created alfresco-global.properties"
 }
@@ -443,23 +443,23 @@ configure_addon_directories() {
     local bin_dir="${ALFRESCO_HOME}/bin"
     
     # Create directories
-    mkdir -p "$modules_platform" "$modules_share" "$amps_dir" "$amps_share_dir" "$bin_dir"
+    sudo mkdir -p "$modules_platform" "$modules_share" "$amps_dir" "$amps_share_dir" "$bin_dir"
     
     # Copy AMPs from distribution
     if [ -d "$ALFRESCO_DIST_DIR/amps" ]; then
         log_info "Copying platform AMPs..."
-        cp -r "$ALFRESCO_DIST_DIR/amps/"* "$amps_dir/" 2>/dev/null || true
+        sudo cp -r "$ALFRESCO_DIST_DIR/amps/"* "$amps_dir/" 2>/dev/null || true
     fi
     
     if [ -d "$ALFRESCO_DIST_DIR/amps_share" ]; then
         log_info "Copying Share AMPs..."
-        cp -r "$ALFRESCO_DIST_DIR/amps_share/"* "$amps_share_dir/" 2>/dev/null || true
+        sudo cp -r "$ALFRESCO_DIST_DIR/amps_share/"* "$amps_share_dir/" 2>/dev/null || true
     fi
     
     # Copy bin utilities (including alfresco-mmt.jar)
     if [ -d "$ALFRESCO_DIST_DIR/bin" ]; then
         log_info "Copying bin utilities..."
-        cp -r "$ALFRESCO_DIST_DIR/bin/"* "$bin_dir/"
+        sudo cp -r "$ALFRESCO_DIST_DIR/bin/"* "$bin_dir/"
     fi
     
     log_info "Addon directories configured"
@@ -521,7 +521,7 @@ extract_war_files() {
         log_info "Alfresco WAR already extracted"
     else
         log_info "Extracting alfresco.war..."
-        mkdir -p "$alfresco_dir"
+        sudo mkdir -p "$alfresco_dir"
         unzip -q "$tomcat_home/webapps/alfresco.war" -d "$alfresco_dir"
     fi
     
@@ -531,7 +531,7 @@ extract_war_files() {
         log_info "Share WAR already extracted"
     else
         log_info "Extracting share.war..."
-        mkdir -p "$share_dir"
+        sudo mkdir -p "$share_dir"
         unzip -q "$tomcat_home/webapps/share.war" -d "$share_dir"
     fi
 }
@@ -546,14 +546,14 @@ configure_logging() {
     local logs_dir="$tomcat_home/logs"
     
     # Ensure logs directory exists
-    mkdir -p "$logs_dir"
+    sudo mkdir -p "$logs_dir"
     
     # Configure Alfresco logging
     local alfresco_log4j="$tomcat_home/webapps/alfresco/WEB-INF/classes/log4j2.properties"
     if [ -f "$alfresco_log4j" ]; then
         backup_file "$alfresco_log4j"
-        sed -i "s|^appender\.rolling\.fileName=alfresco\.log|appender.rolling.fileName=$logs_dir/alfresco.log|" "$alfresco_log4j"
-        sed -i "s|^appender\.rolling\.filePattern=alfresco\.log|appender.rolling.filePattern=$logs_dir/alfresco.log|" "$alfresco_log4j"
+        sudo sed -i "s|^appender\.rolling\.fileName=alfresco\.log|appender.rolling.fileName=$logs_dir/alfresco.log|" "$alfresco_log4j"
+        sudo sed -i "s|^appender\.rolling\.filePattern=alfresco\.log|appender.rolling.filePattern=$logs_dir/alfresco.log|" "$alfresco_log4j"
         log_info "Configured Alfresco logging: $logs_dir/alfresco.log"
     fi
     
@@ -561,8 +561,8 @@ configure_logging() {
     local share_log4j="$tomcat_home/webapps/share/WEB-INF/classes/log4j2.properties"
     if [ -f "$share_log4j" ]; then
         backup_file "$share_log4j"
-        sed -i "s|^appender\.rolling\.fileName=share\.log|appender.rolling.fileName=$logs_dir/share.log|" "$share_log4j"
-        sed -i "s|^appender\.rolling\.filePattern=share\.log|appender.rolling.filePattern=$logs_dir/share.log|" "$share_log4j"
+        sudo sed -i "s|^appender\.rolling\.fileName=share\.log|appender.rolling.fileName=$logs_dir/share.log|" "$share_log4j"
+        sudo sed -i "s|^appender\.rolling\.filePattern=share\.log|appender.rolling.filePattern=$logs_dir/share.log|" "$share_log4j"
         log_info "Configured Share logging: $logs_dir/share.log"
     fi
 }
@@ -593,8 +593,8 @@ set_permissions() {
     done
     
     # Secure sensitive files
-    chmod 600 "$tomcat_home/shared/classes/alfresco-global.properties"
-    chmod 700 "${ALFRESCO_HOME}/keystore"
+    sudo chmod 600 "$tomcat_home/shared/classes/alfresco-global.properties"
+    sudo chmod 700 "${ALFRESCO_HOME}/keystore"
     
     log_info "Permissions configured"
 }
@@ -629,7 +629,7 @@ verify_installation() {
     )
     
     for dir in "${dirs[@]}"; do
-        if [ -d "$dir" ]; then
+        if sudo test -d "$dir"; then
             log_info "Directory exists: $dir"
         else
             log_error "Directory missing: $dir"
@@ -646,9 +646,9 @@ verify_installation() {
     )
     
     for file_pattern in "${files[@]}"; do
-        # Use ls to expand glob patterns (SC2086 intentionally ignored for glob expansion)
+        # Use sudo ls to expand glob patterns (SC2086 intentionally ignored for glob expansion)
         # shellcheck disable=SC2086
-        if ls $file_pattern 1> /dev/null 2>&1; then
+        if sudo ls $file_pattern 1> /dev/null 2>&1; then
             log_info "File exists: $file_pattern"
         else
             log_error "File missing: $file_pattern"
@@ -658,7 +658,7 @@ verify_installation() {
     
     # Check configuration file permissions
     local props_perms
-    props_perms=$(stat -c "%a" "$tomcat_home/shared/classes/alfresco-global.properties" 2>/dev/null)
+    props_perms=$(sudo stat -c "%a" "$tomcat_home/shared/classes/alfresco-global.properties" 2>/dev/null)
     if [ "$props_perms" = "600" ]; then
         log_info "alfresco-global.properties has secure permissions (600)"
     else
