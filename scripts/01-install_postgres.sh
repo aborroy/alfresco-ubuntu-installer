@@ -205,17 +205,17 @@ verify_installation() {
     
     # Check service status
     if systemctl is-active --quiet postgresql; then
-        log_info "✓ PostgreSQL service is running"
+        log_info "PostgreSQL service is running"
     else
-        log_error "✗ PostgreSQL service is not running"
+        log_error "PostgreSQL service is not running"
         ((errors++))
     fi
     
     # Check database connectivity
     if PGPASSWORD="${ALFRESCO_DB_PASSWORD}" psql -h localhost -U "${ALFRESCO_DB_USER}" -d "${ALFRESCO_DB_NAME}" -c "SELECT 1" &>/dev/null; then
-        log_info "✓ Database connection successful"
+        log_info "Database connection successful"
     else
-        log_error "✗ Cannot connect to database"
+        log_error "Cannot connect to database"
         ((errors++))
     fi
     
@@ -223,9 +223,9 @@ verify_installation() {
     local db_encoding
     db_encoding=$(sudo -u postgres psql -tAc "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='${ALFRESCO_DB_NAME}'")
     if [ "$db_encoding" = "UTF8" ]; then
-        log_info "✓ Database encoding is UTF8"
+        log_info "Database encoding is UTF8"
     else
-        log_error "✗ Database encoding is $db_encoding (expected UTF8)"
+        log_error "Database encoding is $db_encoding (expected UTF8)"
         ((errors++))
     fi
     

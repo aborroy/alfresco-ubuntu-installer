@@ -186,17 +186,17 @@ verify_installation() {
     
     # Check java command
     if command -v java &> /dev/null; then
-        log_info "✓ java command is available"
+        log_info "java command is available"
     else
-        log_error "✗ java command not found"
+        log_error "java command not found"
         ((errors++))
     fi
     
     # Check javac command
     if command -v javac &> /dev/null; then
-        log_info "✓ javac command is available"
+        log_info "javac command is available"
     else
-        log_error "✗ javac command not found"
+        log_error "javac command not found"
         ((errors++))
     fi
     
@@ -205,17 +205,17 @@ verify_installation() {
     installed_version=$(java -version 2>&1 | head -1 | grep -oP '\d+' | head -1)
     
     if [ "$installed_version" = "$JAVA_VERSION" ]; then
-        log_info "✓ Java version is ${JAVA_VERSION}"
+        log_info "Java version is ${JAVA_VERSION}"
     else
-        log_error "✗ Java version mismatch: expected ${JAVA_VERSION}, got ${installed_version}"
+        log_error "Java version mismatch: expected ${JAVA_VERSION}, got ${installed_version}"
         ((errors++))
     fi
     
     # Check JAVA_HOME
     if [ -d "${JAVA_HOME_PATH}" ]; then
-        log_info "✓ JAVA_HOME directory exists: ${JAVA_HOME_PATH}"
+        log_info "JAVA_HOME directory exists: ${JAVA_HOME_PATH}"
     else
-        log_error "✗ JAVA_HOME directory not found: ${JAVA_HOME_PATH}"
+        log_error "JAVA_HOME directory not found: ${JAVA_HOME_PATH}"
         ((errors++))
     fi
     
