@@ -96,6 +96,8 @@ jobs:
 
       - name: Generate configuration
         run: |
+          echo "Making scripts executable..."
+          chmod +x scripts/*.sh
           echo "Generating secure configuration..."
           bash scripts/00-generate-config.sh
           echo "Configuration generated successfully"
