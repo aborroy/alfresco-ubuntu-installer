@@ -348,7 +348,7 @@ verify_installation() {
     )
     
     for file in "${key_files[@]}"; do
-        if [ -f "$activemq_home/$file" ]; then
+        if sudo test -f "$activemq_home/$file"; then
             log_info "Found: $file"
         else
             log_error "Missing: $file"
@@ -376,7 +376,7 @@ verify_installation() {
     local cred_files=("conf/users.properties" "conf/groups.properties" "conf/jetty-realm.properties")
     for file in "${cred_files[@]}"; do
         local perms
-        perms=$(stat -c "%a" "$activemq_home/$file" 2>/dev/null)
+        perms=$(sudo stat -c "%a" "$activemq_home/$file" 2>/dev/null)
         if [ "$perms" = "600" ]; then
             log_info "Secure permissions on $file"
         else
@@ -386,7 +386,7 @@ verify_installation() {
     
     # Display version
     log_info "ActiveMQ version:"
-    "$activemq_home/bin/activemq" --version 2>/dev/null | head -3 | while read -r line; do
+    sudo "$activemq_home/bin/activemq" --version 2>/dev/null | head -3 | while read -r line; do
         log_info "  $line"
     done
     
