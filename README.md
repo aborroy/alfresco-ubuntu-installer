@@ -387,20 +387,3 @@ ln -sf alfresco-transform-core-aio-X.Y.Z.jar /home/ubuntu/transform/alfresco-tra
 # Restart
 sudo systemctl restart transform
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `shellcheck scripts/*.sh` to lint
-5. Submit a pull request
-
-## License
-
-This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
-
-## Acknowledgments
-
-- [Alfresco](https://www.alfresco.com/) for the Content Services platform
-- [Apache Software Foundation](https://apache.org/) for Tomcat, ActiveMQ, and Solr
