@@ -16,7 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${SCRIPT_DIR}/../config"
 CONFIG_FILE="${CONFIG_DIR}/alfresco.env"
-TEMPLATE_FILE="${CONFIG_DIR}/alfresco.env.template"
+# shellcheck source=/dev/null
 
 # Colors
 RED='\033[0;31m'

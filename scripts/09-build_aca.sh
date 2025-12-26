@@ -24,6 +24,7 @@
 
 # Load common functions and configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
 # -----------------------------------------------------------------------------
@@ -124,7 +125,7 @@ clone_repository() {
         
         # Fetch latest changes
         log_info "Fetching latest changes..."
-        cd "$ACA_DIR"
+        cd "$ACA_DIR" || { log_error "Failed to cd to $ACA_DIR"; exit 1; }
         git fetch --tags --force
         
         return 0
@@ -134,7 +135,7 @@ clone_repository() {
     log_info "Cloning from $ACA_REPO_URL..."
     git clone "$ACA_REPO_URL" "$ACA_DIR"
     
-    cd "$ACA_DIR"
+    cd "$ACA_DIR" || { log_error "Failed to cd to $ACA_DIR"; exit 1; }
     log_info "Repository cloned to $ACA_DIR"
 }
 
@@ -144,7 +145,7 @@ clone_repository() {
 checkout_version() {
     log_step "Checking out ACA version..."
     
-    cd "$ACA_DIR"
+    cd "$ACA_DIR" || { log_error "Failed to cd to $ACA_DIR"; exit 1; }
     
     # Determine version to use
     local target_version
@@ -198,7 +199,7 @@ checkout_version() {
 configure_app() {
     log_step "Configuring ACA for Alfresco backend..."
     
-    cd "$ACA_DIR"
+    cd "$ACA_DIR" || { log_error "Failed to cd to $ACA_DIR"; exit 1; }
     
     # The app.config.json is typically in src/assets or dist after build
     # For build-time configuration, we modify the proxy or environment
@@ -230,7 +231,7 @@ configure_app() {
 install_dependencies() {
     log_step "Installing npm dependencies..."
     
-    cd "$ACA_DIR"
+    cd "$ACA_DIR" || { log_error "Failed to cd to $ACA_DIR"; exit 1; }
     
     # Check if node_modules exists and package-lock.json hasn't changed
     if [ -d "node_modules" ] && [ -f "node_modules/.package-lock.json" ]; then
@@ -267,7 +268,7 @@ install_dependencies() {
 build_app() {
     log_step "Building ACA for production..."
     
-    cd "$ACA_DIR"
+    cd "$ACA_DIR" || { log_error "Failed to cd to $ACA_DIR"; exit 1; }
     
     # Check if build already exists for this version
     local version_file="$ACA_DIR/dist/content-ce/.version"
@@ -323,6 +324,7 @@ verify_build() {
     
     for file in "${key_files[@]}"; do
         # Files may have hash suffixes, so use glob pattern
+        # shellcheck disable=SC2086
         if ls "$dist_dir"/${file%.*}*.${file##*.} 1>/dev/null 2>&1 || [ -f "$dist_dir/$file" ]; then
             log_info "Found: $file"
         else

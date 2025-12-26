@@ -19,6 +19,7 @@
 
 # Load common functions and configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
 # -----------------------------------------------------------------------------
@@ -154,7 +155,9 @@ configure_tomcat_shared() {
     backup_file "$catalina_props"
     
     # Configure shared.loader
+    # Note: ${catalina.base} is a Tomcat variable, not a shell variable
     log_info "Updating catalina.properties..."
+    # shellcheck disable=SC2016
     sed -i 's|^shared.loader=$|shared.loader=${catalina.base}/shared/classes,${catalina.base}/shared/lib/*.jar|' "$catalina_props"
     
     log_info "Tomcat shared loader configured"
@@ -206,7 +209,8 @@ install_jdbc_driver() {
         exit 1
     fi
     
-    local jdbc_dest="$tomcat_home/shared/lib/$(basename "$jdbc_source")"
+    local jdbc_dest
+    jdbc_dest="$tomcat_home/shared/lib/$(basename "$jdbc_source")"
     
     if [ -f "$jdbc_dest" ]; then
         log_info "JDBC driver already installed: $(basename "$jdbc_source")"
@@ -642,7 +646,8 @@ verify_installation() {
     )
     
     for file_pattern in "${files[@]}"; do
-        # Use ls to expand glob patterns
+        # Use ls to expand glob patterns (SC2086 intentionally ignored for glob expansion)
+        # shellcheck disable=SC2086
         if ls $file_pattern 1> /dev/null 2>&1; then
             log_info "File exists: $file_pattern"
         else

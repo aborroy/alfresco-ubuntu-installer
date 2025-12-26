@@ -141,7 +141,7 @@ wait_for_service() {
     log_info "Waiting for $service_name to be ready on $host:$port..."
     
     while ! nc -z "$host" "$port" 2>/dev/null; do
-        if [ $attempt -ge $max_attempts ]; then
+        if [ $attempt -ge "$max_attempts" ]; then
             log_error "$service_name failed to start within expected time"
             return 1
         fi

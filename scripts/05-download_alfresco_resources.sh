@@ -19,6 +19,7 @@
 
 # Load common functions and configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
 # -----------------------------------------------------------------------------
@@ -311,7 +312,7 @@ Alfresco Search Services:  ${ALFRESCO_SEARCH_VERSION_ACTUAL}
 Alfresco Transform Core:   ${ALFRESCO_TRANSFORM_VERSION_ACTUAL}
 
 Files:
-$(ls -lh "${DOWNLOAD_DIR}"/*.zip "${DOWNLOAD_DIR}"/*.jar 2>/dev/null | awk '{print "  " $NF " (" $5 ")"}')
+$(find "${DOWNLOAD_DIR}" -maxdepth 1 \( -name "*.zip" -o -name "*.jar" \) -exec ls -lh {} \; 2>/dev/null | awk '{print "  " $NF " (" $5 ")"}')
 
 Pinned versions from config/versions.conf:
   ALFRESCO_VERSION=${ALFRESCO_VERSION}
