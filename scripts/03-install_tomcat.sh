@@ -97,11 +97,7 @@ determine_version() {
     
     if [ "${USE_LATEST_VERSIONS:-false}" = "true" ]; then
         log_info "Fetching latest Tomcat ${TOMCAT_MAJOR_VERSION}.x version..."
-        TOMCAT_VERSION_ACTUAL=$(curl -s "https://dlcdn.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/" | \
-            grep -oP "v[0-9]+\.[0-9]+\.[0-9]+" | \
-            sort -V | \
-            tail -1 | \
-            sed 's/v//')
+        TOMCAT_VERSION_ACTUAL=$(fetch_latest_tomcat_version)
         
         if [ -z "$TOMCAT_VERSION_ACTUAL" ]; then
             log_warn "Could not fetch latest version, falling back to pinned version"
@@ -113,6 +109,17 @@ determine_version() {
         TOMCAT_VERSION_ACTUAL="$TOMCAT_VERSION"
         log_info "Using pinned Tomcat version: $TOMCAT_VERSION_ACTUAL"
     fi
+}
+
+# -----------------------------------------------------------------------------
+# Fetch Latest Tomcat Version
+# -----------------------------------------------------------------------------
+fetch_latest_tomcat_version() {
+    curl -s "https://dlcdn.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/" | \
+        grep -oP "v[0-9]+\.[0-9]+\.[0-9]+" | \
+        sort -V | \
+        tail -1 | \
+        sed 's/v//'
 }
 
 # -----------------------------------------------------------------------------
@@ -133,9 +140,30 @@ download_tomcat() {
     log_info "Downloading from: $download_url"
     
     if ! wget -q --show-progress "$download_url" -O "$download_file"; then
-        log_error "Failed to download Tomcat"
-        log_error "URL: $download_url"
-        exit 1
+        log_warn "Failed to download pinned version ${TOMCAT_VERSION_ACTUAL}"
+        log_info "Attempting to fetch latest available version..."
+        
+        # Fetch latest version as fallback
+        local latest_version
+        latest_version=$(fetch_latest_tomcat_version)
+        
+        if [ -n "$latest_version" ] && [ "$latest_version" != "$TOMCAT_VERSION_ACTUAL" ]; then
+            log_info "Found latest version: $latest_version"
+            TOMCAT_VERSION_ACTUAL="$latest_version"
+            download_url="https://dlcdn.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_VERSION_ACTUAL}/bin/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
+            download_file="/tmp/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
+            
+            log_info "Downloading from: $download_url"
+            if ! wget -q --show-progress "$download_url" -O "$download_file"; then
+                log_error "Failed to download Tomcat"
+                log_error "URL: $download_url"
+                exit 1
+            fi
+        else
+            log_error "Failed to download Tomcat and no alternative version found"
+            log_error "URL: $download_url"
+            exit 1
+        fi
     fi
     
     log_info "Download completed: $download_file"
