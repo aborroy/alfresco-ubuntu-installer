@@ -1,32 +1,243 @@
 #!/bin/bash
+# =============================================================================
+# PostgreSQL Installation Script
+# =============================================================================
+# Installs and configures PostgreSQL for Alfresco Content Services.
+#
+# Prerequisites:
+# - Run 00-generate-config.sh first to create configuration
+# - Ubuntu 22.04 or 24.04
+# - sudo privileges
+#
+# Usage:
+#   bash scripts/01-install_postgres.sh
+# =============================================================================
 
-set -e
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
 
-echo "Updating package list..."
-sudo apt update
+# -----------------------------------------------------------------------------
+# Main Installation
+# -----------------------------------------------------------------------------
+main() {
+    log_step "Starting PostgreSQL installation..."
+    
+    # Pre-flight checks
+    check_root  # Ensure not running as root
+    check_sudo  # Verify sudo access
+    load_config # Load configuration from alfresco.env
+    
+    # Install PostgreSQL
+    install_postgresql
+    
+    # Configure PostgreSQL
+    configure_authentication
+    
+    # Restart service to apply configuration
+    restart_postgresql
+    
+    # Create Alfresco database and user
+    create_alfresco_database
+    
+    # Enable service on boot
+    enable_postgresql
+    
+    # Verify installation
+    verify_installation
+    
+    log_info "PostgreSQL installation and setup completed successfully!"
+}
 
-echo "Installing PostgreSQL..."
-sudo apt install -y postgresql postgresql-contrib
+# -----------------------------------------------------------------------------
+# Install PostgreSQL
+# -----------------------------------------------------------------------------
+install_postgresql() {
+    log_step "Installing PostgreSQL ${POSTGRESQL_VERSION}..."
+    
+    # Check if PostgreSQL is already installed
+    if command -v psql &> /dev/null; then
+        local installed_version
+        installed_version=$(psql --version | grep -oP '\d+' | head -1)
+        log_info "PostgreSQL ${installed_version} is already installed"
+        
+        if [ "$installed_version" != "$POSTGRESQL_VERSION" ]; then
+            log_warn "Installed version ($installed_version) differs from configured version ($POSTGRESQL_VERSION)"
+            log_warn "Continuing with installed version..."
+        fi
+        return 0
+    fi
+    
+    # Update package list
+    log_info "Updating package list..."
+    sudo apt-get update
+    
+    # Install PostgreSQL
+    log_info "Installing PostgreSQL packages..."
+    sudo apt-get install -y "postgresql-${POSTGRESQL_VERSION}" postgresql-contrib
+    
+    log_info "PostgreSQL ${POSTGRESQL_VERSION} installed successfully"
+}
 
-echo "Enable local connections"
-sudo sed -i 's/local\s\+all\s\+postgres\s\+peer/local   all             postgres                                trust/' /etc/postgresql/16/main/pg_hba.conf
-sudo sed -i 's/local\s\+all\s\+all\s\+peer/local   all             all                                md5/' /etc/postgresql/16/main/pg_hba.conf
+# -----------------------------------------------------------------------------
+# Configure Authentication
+# -----------------------------------------------------------------------------
+configure_authentication() {
+    log_step "Configuring PostgreSQL authentication..."
+    
+    local pg_hba_file="/etc/postgresql/${POSTGRESQL_VERSION}/main/pg_hba.conf"
+    
+    if [ ! -f "$pg_hba_file" ]; then
+        log_error "pg_hba.conf not found at: $pg_hba_file"
+        exit 1
+    fi
+    
+    # Backup original configuration
+    backup_file "$pg_hba_file"
+    
+    # Check if already configured for Alfresco
+    if grep -q "# Alfresco Configuration" "$pg_hba_file"; then
+        log_info "PostgreSQL authentication already configured for Alfresco"
+        return 0
+    fi
+    
+    # Configure authentication:
+    # - Keep peer authentication for postgres user (secure local admin access)
+    # - Use scram-sha-256 for alfresco user connections
+    
+    log_info "Updating pg_hba.conf..."
+    
+    # Add Alfresco-specific configuration before the default entries
+    sudo sed -i '/^# TYPE/a\
+# Alfresco Configuration\
+host    alfresco        alfresco        127.0.0.1/32            scram-sha-256\
+host    alfresco        alfresco        ::1/128                 scram-sha-256\
+local   alfresco        alfresco                                md5' "$pg_hba_file"
+    
+    log_info "Authentication configured successfully"
+}
 
-echo "Stopping PostgreSQL service..."
-sudo systemctl stop postgresql
+# -----------------------------------------------------------------------------
+# Restart PostgreSQL
+# -----------------------------------------------------------------------------
+restart_postgresql() {
+    log_step "Restarting PostgreSQL service..."
+    
+    sudo systemctl restart postgresql
+    
+    # Wait for PostgreSQL to be ready
+    local max_attempts=30
+    local attempt=1
+    
+    while ! sudo -u postgres pg_isready -q 2>/dev/null; do
+        if [ $attempt -ge $max_attempts ]; then
+            log_error "PostgreSQL failed to start within expected time"
+            exit 1
+        fi
+        echo -n "."
+        sleep 1
+        ((attempt++))
+    done
+    echo ""
+    
+    log_info "PostgreSQL is running"
+}
 
-echo "Starting PostgreSQL service..."
-sudo systemctl start postgresql
+# -----------------------------------------------------------------------------
+# Create Alfresco Database and User
+# -----------------------------------------------------------------------------
+create_alfresco_database() {
+    log_step "Configuring Alfresco database..."
+    
+    # Create user if not exists
+    if pg_user_exists "${ALFRESCO_DB_USER}"; then
+        log_info "User '${ALFRESCO_DB_USER}' already exists"
+        
+        # Update password in case it changed
+        log_info "Updating password for user '${ALFRESCO_DB_USER}'..."
+        pg_execute "ALTER USER ${ALFRESCO_DB_USER} WITH PASSWORD '${ALFRESCO_DB_PASSWORD}';"
+    else
+        log_info "Creating user '${ALFRESCO_DB_USER}'..."
+        pg_execute "CREATE USER ${ALFRESCO_DB_USER} WITH PASSWORD '${ALFRESCO_DB_PASSWORD}';"
+    fi
+    
+    # Create database if not exists
+    if pg_database_exists "${ALFRESCO_DB_NAME}"; then
+        log_info "Database '${ALFRESCO_DB_NAME}' already exists"
+    else
+        log_info "Creating database '${ALFRESCO_DB_NAME}'..."
+        pg_execute "CREATE DATABASE ${ALFRESCO_DB_NAME} OWNER ${ALFRESCO_DB_USER} ENCODING 'UTF8';"
+    fi
+    
+    # Ensure privileges are set correctly
+    log_info "Configuring database privileges..."
+    pg_execute "GRANT ALL PRIVILEGES ON DATABASE ${ALFRESCO_DB_NAME} TO ${ALFRESCO_DB_USER};"
+    
+    # For PostgreSQL 15+, also grant schema privileges
+    local pg_version
+    pg_version=$(sudo -u postgres psql -tAc "SHOW server_version_num" | cut -c1-2)
+    if [ "$pg_version" -ge 15 ]; then
+        log_info "Configuring schema privileges for PostgreSQL ${pg_version}..."
+        sudo -u postgres psql -d "${ALFRESCO_DB_NAME}" -c "GRANT ALL ON SCHEMA public TO ${ALFRESCO_DB_USER};"
+    fi
+    
+    log_info "Database configuration completed"
+}
 
-echo "Configuring Alfresco database..."
-psql -U postgres -c "CREATE USER alfresco WITH PASSWORD 'alfresco';"
-psql -U postgres -c "CREATE DATABASE alfresco OWNER alfresco ENCODING 'UTF8';"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE alfresco TO alfresco;"
+# -----------------------------------------------------------------------------
+# Enable PostgreSQL on Boot
+# -----------------------------------------------------------------------------
+enable_postgresql() {
+    log_step "Enabling PostgreSQL to start on boot..."
+    
+    sudo systemctl enable postgresql
+    
+    log_info "PostgreSQL enabled on boot"
+}
 
-echo "Stopping PostgreSQL service..."
-sudo systemctl stop postgresql
+# -----------------------------------------------------------------------------
+# Verify Installation
+# -----------------------------------------------------------------------------
+verify_installation() {
+    log_step "Verifying PostgreSQL installation..."
+    
+    local errors=0
+    
+    # Check service status
+    if systemctl is-active --quiet postgresql; then
+        log_info "✓ PostgreSQL service is running"
+    else
+        log_error "✗ PostgreSQL service is not running"
+        ((errors++))
+    fi
+    
+    # Check database connectivity
+    if PGPASSWORD="${ALFRESCO_DB_PASSWORD}" psql -h localhost -U "${ALFRESCO_DB_USER}" -d "${ALFRESCO_DB_NAME}" -c "SELECT 1" &>/dev/null; then
+        log_info "✓ Database connection successful"
+    else
+        log_error "✗ Cannot connect to database"
+        ((errors++))
+    fi
+    
+    # Check encoding
+    local db_encoding
+    db_encoding=$(sudo -u postgres psql -tAc "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='${ALFRESCO_DB_NAME}'")
+    if [ "$db_encoding" = "UTF8" ]; then
+        log_info "✓ Database encoding is UTF8"
+    else
+        log_error "✗ Database encoding is $db_encoding (expected UTF8)"
+        ((errors++))
+    fi
+    
+    if [ $errors -gt 0 ]; then
+        log_error "Verification failed with $errors error(s)"
+        exit 1
+    fi
+    
+    log_info "All verifications passed"
+}
 
-echo "Enabling PostgreSQL to start on boot..."
-sudo systemctl enable postgresql
-
-echo "PostgreSQL installation and setup completed successfully!"
+# -----------------------------------------------------------------------------
+# Run Main
+# -----------------------------------------------------------------------------
+main "$@"
