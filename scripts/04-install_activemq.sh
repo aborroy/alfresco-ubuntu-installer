@@ -93,9 +93,6 @@ detect_architecture() {
 determine_version() {
     log_step "Determining ActiveMQ version..."
     
-    # Extract major.minor version (e.g., "5.18" from "5.18.7")
-    ACTIVEMQ_MINOR_VERSION="${ACTIVEMQ_VERSION%.*}"
-    
     ACTIVEMQ_VERSION_ACTUAL="$ACTIVEMQ_VERSION"
     log_info "Using pinned ActiveMQ version: $ACTIVEMQ_VERSION_ACTUAL"
 }
