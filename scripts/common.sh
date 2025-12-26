@@ -191,7 +191,12 @@ backup_file() {
         mkdir -p "$backup_dir"
         local backup_name
         backup_name="$(basename "$file").$(date +%Y%m%d_%H%M%S).bak"
-        cp "$file" "$backup_dir/$backup_name"
+        # Use sudo if file is not readable by current user
+        if [ -r "$file" ]; then
+            cp "$file" "$backup_dir/$backup_name"
+        else
+            sudo cp "$file" "$backup_dir/$backup_name"
+        fi
         log_info "Backed up $file to $backup_dir/$backup_name"
     fi
 }
