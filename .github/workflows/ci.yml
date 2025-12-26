@@ -30,7 +30,9 @@ jobs:
       - name: Run ShellCheck on all scripts
         run: |
           echo "Checking shell scripts..."
-          shellcheck scripts/*.sh
+          # Run shellcheck with -x to follow sources, from the scripts directory
+          # Exclude SC1091 as shellcheck can't resolve dynamic paths like ${SCRIPT_DIR}
+          shellcheck --exclude=SC1091 scripts/*.sh
           echo "All scripts passed linting!"
 
   # ===========================================================================
