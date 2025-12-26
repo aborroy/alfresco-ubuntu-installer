@@ -366,9 +366,9 @@ verify_installation() {
     
     # Check service is enabled
     if systemctl is-enabled --quiet activemq 2>/dev/null; then
-        log_info "✓ ActiveMQ service is enabled"
+        log_info "ActiveMQ service is enabled"
     else
-        log_error "✗ ActiveMQ service is not enabled"
+        log_error "ActiveMQ service is not enabled"
         ((errors++))
     fi
     
