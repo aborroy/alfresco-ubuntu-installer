@@ -195,10 +195,30 @@ install_tomcat() {
         fi
     fi
     
+    # Remove any partial installation
+    if [ -d "$tomcat_home" ]; then
+        log_warn "Removing partial installation at $tomcat_home"
+        sudo rm -rf "$tomcat_home"
+    fi
+    
     # Create directory and extract
     log_info "Extracting Tomcat to $tomcat_home..."
     sudo mkdir -p "$tomcat_home"
-    sudo tar xzf "$download_file" -C "$tomcat_home" --strip-components=1
+    
+    if ! sudo tar xzf "$download_file" -C "$tomcat_home" --strip-components=1; then
+        log_error "Failed to extract Tomcat archive"
+        exit 1
+    fi
+    
+    # Verify extraction was successful
+    if [ ! -f "$tomcat_home/conf/server.xml" ]; then
+        log_error "Extraction incomplete - conf/server.xml not found"
+        log_error "Contents of $tomcat_home:"
+        ls -la "$tomcat_home" || true
+        log_error "Contents of archive:"
+        tar tzf "$download_file" | head -20 || true
+        exit 1
+    fi
     
     log_info "Tomcat extracted successfully"
 }
