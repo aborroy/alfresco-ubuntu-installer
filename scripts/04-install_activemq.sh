@@ -93,17 +93,12 @@ detect_architecture() {
 determine_version() {
     log_step "Determining ActiveMQ version..."
     
-    # Extract major version (e.g., "6" from "6.1.2")
-    ACTIVEMQ_MAJOR_VERSION="${ACTIVEMQ_VERSION%%.*}"
+    # Extract major.minor version (e.g., "5.18" from "5.18.6")
+    ACTIVEMQ_MINOR_VERSION="${ACTIVEMQ_VERSION%.*}"
     
     if [ "${USE_LATEST_VERSIONS:-false}" = "true" ]; then
-        log_info "Fetching latest ActiveMQ version..."
-        
-        # Fetch latest version matching major version
-        ACTIVEMQ_VERSION_ACTUAL=$(curl -s "https://dlcdn.apache.org/activemq/" | \
-            grep -oP "${ACTIVEMQ_MAJOR_VERSION}\.[0-9]+\.[0-9]+" | \
-            sort -V | \
-            tail -1)
+        log_info "Fetching latest ActiveMQ ${ACTIVEMQ_MINOR_VERSION}.x version..."
+        ACTIVEMQ_VERSION_ACTUAL=$(fetch_latest_activemq_version)
         
         if [ -z "$ACTIVEMQ_VERSION_ACTUAL" ]; then
             log_warn "Could not fetch latest version, falling back to pinned version"
@@ -118,12 +113,24 @@ determine_version() {
 }
 
 # -----------------------------------------------------------------------------
+# Fetch Latest ActiveMQ Version
+# -----------------------------------------------------------------------------
+fetch_latest_activemq_version() {
+    # ActiveMQ 5.x uses different URL structure than 6.x
+    curl -s "https://dlcdn.apache.org/activemq/${ACTIVEMQ_MINOR_VERSION}/" | \
+        grep -oP "${ACTIVEMQ_MINOR_VERSION}\.[0-9]+" | \
+        sort -V | \
+        tail -1
+}
+
+# -----------------------------------------------------------------------------
 # Download ActiveMQ
 # -----------------------------------------------------------------------------
 download_activemq() {
     log_step "Downloading Apache ActiveMQ ${ACTIVEMQ_VERSION_ACTUAL}..."
     
-    local download_url="https://dlcdn.apache.org/activemq/${ACTIVEMQ_VERSION_ACTUAL}/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
+    # ActiveMQ 5.x URL format: https://dlcdn.apache.org/activemq/5.18.6/apache-activemq-5.18.6-bin.tar.gz
+    local download_url="https://dlcdn.apache.org/activemq/${ACTIVEMQ_MINOR_VERSION}/${ACTIVEMQ_VERSION_ACTUAL}/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
     local download_file="/tmp/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
     
     # Check if already downloaded
@@ -135,9 +142,30 @@ download_activemq() {
     log_info "Downloading from: $download_url"
     
     if ! wget -q --show-progress "$download_url" -O "$download_file"; then
-        log_error "Failed to download ActiveMQ"
-        log_error "URL: $download_url"
-        exit 1
+        log_warn "Failed to download pinned version ${ACTIVEMQ_VERSION_ACTUAL}"
+        log_info "Attempting to fetch latest available version..."
+        
+        # Fetch latest version as fallback
+        local latest_version
+        latest_version=$(fetch_latest_activemq_version)
+        
+        if [ -n "$latest_version" ] && [ "$latest_version" != "$ACTIVEMQ_VERSION_ACTUAL" ]; then
+            log_info "Found latest version: $latest_version"
+            ACTIVEMQ_VERSION_ACTUAL="$latest_version"
+            download_url="https://dlcdn.apache.org/activemq/${ACTIVEMQ_MINOR_VERSION}/${ACTIVEMQ_VERSION_ACTUAL}/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
+            download_file="/tmp/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
+            
+            log_info "Downloading from: $download_url"
+            if ! wget -q --show-progress "$download_url" -O "$download_file"; then
+                log_error "Failed to download ActiveMQ"
+                log_error "URL: $download_url"
+                exit 1
+            fi
+        else
+            log_error "Failed to download ActiveMQ and no alternative version found"
+            log_error "URL: $download_url"
+            exit 1
+        fi
     fi
     
     log_info "Download completed: $download_file"
