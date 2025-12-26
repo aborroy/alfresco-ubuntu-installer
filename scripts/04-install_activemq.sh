@@ -103,9 +103,6 @@ determine_version() {
 download_activemq() {
     log_step "Downloading Apache ActiveMQ ${ACTIVEMQ_VERSION_ACTUAL}..."
     
-    # Use archive.apache.org for stable, permanent download links
-    # (dlcdn.apache.org only keeps latest versions)
-    local download_url="https://archive.apache.org/dist/activemq/${ACTIVEMQ_VERSION_ACTUAL}/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
     local download_file="/tmp/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
     
     # Check if already downloaded
@@ -114,11 +111,28 @@ download_activemq() {
         return 0
     fi
     
+    # Primary URL - Apache archive (permanent links for all versions)
+    local download_url="https://archive.apache.org/dist/activemq/${ACTIVEMQ_VERSION_ACTUAL}/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
+    
     log_info "Downloading from: $download_url"
     
-    if ! wget -q --show-progress "$download_url" -O "$download_file"; then
-        log_error "Failed to download ActiveMQ"
-        log_error "URL: $download_url"
+    if ! curl -fSL --progress-bar "$download_url" -o "$download_file"; then
+        # Fallback to dlcdn for latest versions
+        download_url="https://dlcdn.apache.org/activemq/${ACTIVEMQ_VERSION_ACTUAL}/apache-activemq-${ACTIVEMQ_VERSION_ACTUAL}-bin.tar.gz"
+        log_warn "Primary source failed, trying: $download_url"
+        
+        if ! curl -fSL --progress-bar "$download_url" -o "$download_file"; then
+            log_error "Failed to download ActiveMQ"
+            log_error "Please check if version ${ACTIVEMQ_VERSION_ACTUAL} exists"
+            rm -f "$download_file"
+            exit 1
+        fi
+    fi
+    
+    # Verify download
+    if [ ! -s "$download_file" ]; then
+        log_error "Downloaded file is empty"
+        rm -f "$download_file"
         exit 1
     fi
     
