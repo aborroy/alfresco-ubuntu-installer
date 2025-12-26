@@ -96,10 +96,13 @@ jobs:
 
       - name: Generate configuration
         run: |
-          echo "Making scripts executable..."
+          echo "Making scripts executable and accessible to ubuntu user..."
+          chmod -R a+rX .
           chmod +x scripts/*.sh
           echo "Generating secure configuration..."
           bash scripts/00-generate-config.sh
+          # Make generated config readable by all
+          chmod 644 config/alfresco.env
           echo "Configuration generated successfully"
 
       - name: Install PostgreSQL
