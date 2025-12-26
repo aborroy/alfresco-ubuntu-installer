@@ -207,19 +207,19 @@ jobs:
           echo "=== Running Smoke Tests ==="
           
           echo "Testing Alfresco Repository..."
-          curl -sf http://localhost:8080/alfresco/ > /dev/null && echo "✓ Alfresco Repository is responding" || echo "✗ Alfresco Repository not responding"
+          curl -sf http://localhost:8080/alfresco/ > /dev/null && echo "Alfresco Repository is responding" || echo "✗ Alfresco Repository not responding"
           
           echo "Testing Alfresco Share..."
-          curl -sf http://localhost:8080/share/ > /dev/null && echo "✓ Alfresco Share is responding" || echo "✗ Alfresco Share not responding"
+          curl -sf http://localhost:8080/share/ > /dev/null && echo "Alfresco Share is responding" || echo "✗ Alfresco Share not responding"
           
           echo "Testing Nginx proxy..."
-          curl -sf http://localhost/alfresco/ > /dev/null && echo "✓ Nginx proxy to Alfresco working" || echo "✗ Nginx proxy not working"
+          curl -sf http://localhost/alfresco/ > /dev/null && echo "Nginx proxy to Alfresco working" || echo "✗ Nginx proxy not working"
           
           echo "Testing Nginx health endpoint..."
-          curl -sf http://localhost/nginx-health && echo "✓ Nginx health check passed" || echo "✗ Nginx health check failed"
+          curl -sf http://localhost/nginx-health && echo "Nginx health check passed" || echo "✗ Nginx health check failed"
           
           echo "Testing Transform Service..."
-          curl -sf http://localhost:8090/actuator/health > /dev/null && echo "✓ Transform Service is healthy" || echo "✗ Transform Service not responding"
+          curl -sf http://localhost:8090/actuator/health > /dev/null && echo "Transform Service is healthy" || echo "✗ Transform Service not responding"
 
       - name: Collect logs on failure
         if: failure()

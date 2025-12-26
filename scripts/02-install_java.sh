@@ -81,18 +81,16 @@ install_java() {
     log_step "Installing Java JDK ${JAVA_VERSION}..."
     
     local java_package="openjdk-${JAVA_VERSION}-jdk"
+    local java_bin="${JAVA_HOME_PATH}/bin/java"
     
-    # Check if Java is already installed with correct version
-    if command -v java &> /dev/null; then
+    # Check if the specific JDK version is already installed at expected path
+    if [ -f "$java_bin" ]; then
         local installed_version
-        installed_version=$(java -version 2>&1 | head -1 | grep -oP '\d+' | head -1)
+        installed_version=$("$java_bin" -version 2>&1 | head -1 | grep -oP '\d+' | head -1)
         
         if [ "$installed_version" = "$JAVA_VERSION" ]; then
-            log_info "Java ${JAVA_VERSION} is already installed"
+            log_info "Java ${JAVA_VERSION} is already installed at ${JAVA_HOME_PATH}"
             return 0
-        else
-            log_warn "Java ${installed_version} is installed, but version ${JAVA_VERSION} is required"
-            log_info "Installing Java ${JAVA_VERSION} alongside existing version..."
         fi
     fi
     
@@ -103,6 +101,14 @@ install_java() {
     # Install Java JDK
     log_info "Installing ${java_package}..."
     sudo apt-get install -y "$java_package"
+    
+    # Verify installation
+    if [ ! -f "$java_bin" ]; then
+        log_error "Java installation failed - binary not found at $java_bin"
+        log_error "Checking available Java installations..."
+        ls -la /usr/lib/jvm/ || true
+        exit 1
+    fi
     
     log_info "Java JDK ${JAVA_VERSION} installed successfully"
 }
