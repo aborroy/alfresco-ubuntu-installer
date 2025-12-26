@@ -1,6 +1,6 @@
 # Alfresco Ubuntu Installer
 
-[![CI - Test Alfresco Ubuntu Installer](https://github.com/YOUR_ORG/alfresco-ubuntu-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/alfresco-ubuntu-installer/actions/workflows/ci.yml)
+[![CI - Test Alfresco Ubuntu Installer](https://github.com/aborroy/alfresco-ubuntu-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/aborroy/alfresco-ubuntu-installer/actions/workflows/ci.yml)
 
 Automated installation scripts for deploying **Alfresco Content Services Community Edition** on Ubuntu using ZIP distribution files.
 
