@@ -535,21 +535,23 @@ extract_war_files() {
 
     # Extract alfresco.war
     local alfresco_dir="$tomcat_home/webapps/alfresco"
-    if [ -d "$alfresco_dir" ]; then
+    if [ -f "$alfresco_dir/WEB-INF/web.xml" ]; then
         log_info "Alfresco WAR already extracted"
     else
         log_info "Extracting alfresco.war..."
-        sudo mkdir -p "$alfresco_dir"
+        rm -rf "$alfresco_dir"
+        mkdir -p "$alfresco_dir"
         unzip -q "$tomcat_home/webapps/alfresco.war" -d "$alfresco_dir"
     fi
 
     # Extract share.war
     local share_dir="$tomcat_home/webapps/share"
-    if [ -d "$share_dir" ]; then
+    if [ -f "$share_dir/WEB-INF/web.xml" ]; then
         log_info "Share WAR already extracted"
     else
         log_info "Extracting share.war..."
-        sudo mkdir -p "$share_dir"
+        rm -rf "$share_dir"
+        mkdir -p "$share_dir"
         unzip -q "$tomcat_home/webapps/share.war" -d "$share_dir"
     fi
 }
