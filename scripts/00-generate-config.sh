@@ -83,8 +83,6 @@ main() {
     
     db_password=$(generate_password 20)
     solr_secret=$(generate_hex_secret 32)
-    keystore_password=$(generate_password 16)
-    keystore_metadata_password=$(generate_password 16)
     activemq_password=$(generate_password 16)
     
     # Detect current user and group
@@ -133,10 +131,10 @@ export SOLR_PORT="8983"
 export SOLR_SHARED_SECRET="${solr_secret}"
 
 # -----------------------------------------------------------------------------
-# Keystore Configuration
+# Keystore Configuration - Fixed (using default / previous keystore)
 # -----------------------------------------------------------------------------
-export KEYSTORE_PASSWORD="${keystore_password}"
-export KEYSTORE_METADATA_PASSWORD="${keystore_metadata_password}"
+export KEYSTORE_PASSWORD="mp6yc0UD9e"
+export KEYSTORE_METADATA_PASSWORD="oKIWzVdEdA"
 
 # -----------------------------------------------------------------------------
 # ActiveMQ Configuration
