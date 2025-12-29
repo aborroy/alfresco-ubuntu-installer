@@ -6,12 +6,7 @@ Automated installation scripts for deploying **Alfresco Content Services Communi
 
 ## Overview
 
-This project provides a collection of bash scripts to automate the installation and configuration of Alfresco Content Services on Ubuntu 22.04/24.04 LTS. The scripts are designed to be:
-
-- **Idempotent** - Safe to run multiple times without causing errors
-- **Configurable** - All settings externalized to configuration files
-- **Secure** - Credentials auto-generated, no hardcoded passwords
-- **Production-ready** - Proper systemd services, health checks, and logging
+This project provides a collection of bash scripts to automate the installation and configuration of Alfresco Content Services on Ubuntu 22.04/24.04 LTS.
 
 ## Deployment Options
 
@@ -88,7 +83,7 @@ bash scripts/05-download_alfresco_resources.sh
 bash scripts/06-install_alfresco.sh
 bash scripts/07-install_solr.sh
 bash scripts/08-install_transform.sh
-bash scripts/09-build_aca.sh      # Optional: builds Alfresco Content App
+bash scripts/09-build_aca.sh
 bash scripts/10-install_nginx.sh
 ```
 
@@ -132,7 +127,7 @@ alfresco-ubuntu-installer/
 │   ├── 09-build_aca.sh          # Alfresco Content App
 │   ├── 10-install_nginx.sh      # Nginx reverse proxy
 │   └── 11-start_services.sh     # Start all services
-├── downloads/                    # Downloaded artifacts (gitignored)
+├── downloads/                   # Downloaded artifacts (gitignored)
 ├── .github/workflows/
 │   └── ci.yml                   # CI/CD pipeline
 └── README.md
@@ -242,12 +237,12 @@ To override automatic detection, uncomment and modify these lines in `config/alf
 
 ```bash
 # Memory overrides (values in MB)
-export TOMCAT_XMS_MB="4096"              # Tomcat initial heap
-export TOMCAT_XMX_MB="6144"              # Tomcat maximum heap
-export SOLR_HEAP_MB="2048"               # Solr heap
-export TRANSFORM_HEAP_MB="1024"          # Transform service heap
-export ACTIVEMQ_HEAP_MB="512"            # ActiveMQ heap
-export POSTGRES_SHARED_BUFFERS_MB="1024" # PostgreSQL shared_buffers
+export TOMCAT_XMS_MB="4096"               # Tomcat initial heap
+export TOMCAT_XMX_MB="6144"               # Tomcat maximum heap
+export SOLR_HEAP_MB="2048"                # Solr heap
+export TRANSFORM_HEAP_MB="1024"           # Transform service heap
+export ACTIVEMQ_HEAP_MB="512"             # ActiveMQ heap
+export POSTGRES_SHARED_BUFFERS_MB="1024"  # PostgreSQL shared_buffers
 export POSTGRES_EFFECTIVE_CACHE_MB="2048" # PostgreSQL effective_cache_size
 ```
 
@@ -292,7 +287,7 @@ $ bash scripts/11-start_services.sh
 
 ### 4. Apache ActiveMQ
 
-- **Version**: 6.1.2
+- **Version**: 5.17.8
 - **Home**: `/home/ubuntu/activemq`
 - **OpenWire Port**: 61616
 - **Web Console**: 8161
