@@ -245,7 +245,7 @@ check_tomcat_health() {
         local response
         response=$(curl -sf "$alfresco_url" 2>/dev/null || echo "")
         
-        if echo "$response" | grep -q '"isReady":true'; then
+        if echo "$response" | grep -q 'readyProbe: Success'; then
             log_info "Alfresco is ready"
             break
         fi
@@ -295,7 +295,8 @@ check_solr_health() {
         local response
         response=$(curl -sf -H "X-Alfresco-Search-Secret: ${SOLR_SHARED_SECRET:-secret}" "$solr_url" 2>/dev/null || echo "")
         
-        if echo "$response" | grep -q '"status":"OK"'; then
+        # Check for OK status in both JSON and XML formats
+        if echo "$response" | grep -qE '("status":"OK"|<str name="status">OK</str>|>OK<)'; then
             log_info "Solr is healthy"
             return 0
         fi

@@ -55,6 +55,9 @@ main() {
     # Enable and test
     enable_service
     test_configuration
+
+    # Reload changes
+    start_or_reload_service    
     
     # Verify installation
     verify_installation
@@ -381,6 +384,23 @@ enable_service() {
     sudo systemctl enable nginx
     
     log_info "Nginx service enabled on boot"
+}
+
+# -----------------------------------------------------------------------------
+# Start/Reload Service
+# -----------------------------------------------------------------------------
+start_or_reload_service() {
+    log_step "Starting/Reloading Nginx..."
+    
+    if systemctl is-active --quiet nginx; then
+        log_info "Nginx is running, reloading configuration..."
+        sudo systemctl reload nginx
+    else
+        log_info "Starting Nginx..."
+        sudo systemctl start nginx
+    fi
+    
+    log_info "Nginx is now serving the new configuration"
 }
 
 # -----------------------------------------------------------------------------
