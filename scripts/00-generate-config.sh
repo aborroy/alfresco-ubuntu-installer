@@ -77,8 +77,6 @@ main() {
     # Generate random passwords
     local db_password
     local solr_secret
-    local keystore_password
-    local keystore_metadata_password
     local activemq_password
     
     db_password=$(generate_password 20)
