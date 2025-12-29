@@ -128,7 +128,6 @@ fetch_latest_tomcat_version() {
 download_tomcat() {
     log_step "Downloading Apache Tomcat ${TOMCAT_VERSION_ACTUAL}..."
     
-    local download_url="https://dlcdn.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_VERSION_ACTUAL}/bin/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
     local download_file="/tmp/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
     
     # Check if already downloaded
@@ -137,36 +136,31 @@ download_tomcat() {
         return 0
     fi
     
-    log_info "Downloading from: $download_url"
+    # Primary URL (CDN - has latest versions)
+    local cdn_url="https://dlcdn.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_VERSION_ACTUAL}/bin/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
     
-    if ! wget -q --show-progress "$download_url" -O "$download_file"; then
-        log_warn "Failed to download pinned version ${TOMCAT_VERSION_ACTUAL}"
-        log_info "Attempting to fetch latest available version..."
-        
-        # Fetch latest version as fallback
-        local latest_version
-        latest_version=$(fetch_latest_tomcat_version)
-        
-        if [ -n "$latest_version" ] && [ "$latest_version" != "$TOMCAT_VERSION_ACTUAL" ]; then
-            log_info "Found latest version: $latest_version"
-            TOMCAT_VERSION_ACTUAL="$latest_version"
-            download_url="https://dlcdn.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_VERSION_ACTUAL}/bin/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
-            download_file="/tmp/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
-            
-            log_info "Downloading from: $download_url"
-            if ! wget -q --show-progress "$download_url" -O "$download_file"; then
-                log_error "Failed to download Tomcat"
-                log_error "URL: $download_url"
-                exit 1
-            fi
-        else
-            log_error "Failed to download Tomcat and no alternative version found"
-            log_error "URL: $download_url"
-            exit 1
-        fi
+    # Fallback URL (Archive - has all versions)
+    local archive_url="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VERSION}/v${TOMCAT_VERSION_ACTUAL}/bin/apache-tomcat-${TOMCAT_VERSION_ACTUAL}.tar.gz"
+    
+    log_info "Downloading from CDN: $cdn_url"
+    
+    if wget -q --show-progress "$cdn_url" -O "$download_file" 2>/dev/null; then
+        log_info "Download completed from CDN: $download_file"
+        return 0
     fi
     
-    log_info "Download completed: $download_file"
+    log_warn "CDN download failed, trying Apache Archive..."
+    log_info "Downloading from Archive: $archive_url"
+    
+    if wget -q --show-progress "$archive_url" -O "$download_file"; then
+        log_info "Download completed from Archive: $download_file"
+        return 0
+    fi
+    
+    log_error "Failed to download Tomcat ${TOMCAT_VERSION_ACTUAL} from both CDN and Archive"
+    log_error "CDN URL: $cdn_url"
+    log_error "Archive URL: $archive_url"
+    exit 1
 }
 
 # -----------------------------------------------------------------------------
