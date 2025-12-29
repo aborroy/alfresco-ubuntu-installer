@@ -55,7 +55,7 @@ Ensure these ports are available:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_ORG/alfresco-ubuntu-installer.git
+git clone https://github.com/aborroy/alfresco-ubuntu-installer.git
 cd alfresco-ubuntu-installer
 ```
 
