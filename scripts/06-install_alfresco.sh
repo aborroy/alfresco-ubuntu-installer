@@ -533,6 +533,9 @@ extract_war_files() {
 
     local tomcat_home="${ALFRESCO_HOME}/tomcat"
 
+    # Ensure webapps directory is owned by ALFRESCO_USER (may have changed during AMP installation)
+    sudo chown -R "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "$tomcat_home/webapps"
+
     # Extract alfresco.war
     local alfresco_dir="$tomcat_home/webapps/alfresco"
     if [ -f "$alfresco_dir/WEB-INF/web.xml" ]; then
