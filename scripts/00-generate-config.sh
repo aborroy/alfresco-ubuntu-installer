@@ -87,6 +87,16 @@ main() {
     keystore_metadata_password=$(generate_password 16)
     activemq_password=$(generate_password 16)
     
+    # Detect current user and group
+    local current_user
+    local current_group
+    local current_home
+    current_user="$(whoami)"
+    current_group="$(id -gn)"
+    current_home="$(eval echo ~"$current_user")"
+    
+    log_info "Detected user: $current_user (group: $current_group, home: $current_home)"
+    
     # Create configuration file
     cat > "$CONFIG_FILE" << EOF
 # =============================================================================
@@ -102,9 +112,9 @@ main() {
 # -----------------------------------------------------------------------------
 # Installation User and Paths
 # -----------------------------------------------------------------------------
-export ALFRESCO_USER="ubuntu"
-export ALFRESCO_GROUP="ubuntu"
-export ALFRESCO_HOME="/home/ubuntu"
+export ALFRESCO_USER="${current_user}"
+export ALFRESCO_GROUP="${current_group}"
+export ALFRESCO_HOME="${current_home}"
 
 # -----------------------------------------------------------------------------
 # Database Configuration (PostgreSQL)
@@ -196,6 +206,8 @@ EOF
     log_info "Configuration generated successfully: $CONFIG_FILE"
     log_info ""
     log_warn "IMPORTANT: Review and customize the configuration before installation:"
+    log_info "  - Installation user: ${current_user}"
+    log_info "  - Installation home: ${current_home}"
     log_info "  - Database password: (auto-generated)"
     log_info "  - Solr secret: (auto-generated)"
     log_info "  - Memory settings: TOMCAT_XMS/TOMCAT_XMX"
