@@ -449,7 +449,7 @@ backup_configuration() {
             
             if sudo cp -a "$config" "$target_dir/" 2>/dev/null; then
                 log_info "Backed up: $config"
-                ((backed_up++))
+                backed_up=$((backed_up + 1))
             else
                 log_warn "Failed to backup: $config"
             fi
@@ -546,29 +546,39 @@ finalize_backup() {
         log_info "Compressing backup..."
         
         local archive_file="${BACKUP_OUTPUT_DIR}/${BACKUP_NAME}_${BACKUP_TIMESTAMP}.tar.gz"
+        local compress_log="${BACKUP_OUTPUT_DIR}/compress_${BACKUP_TIMESTAMP}.log"
         
         cd "$BACKUP_OUTPUT_DIR" || exit 1
         
-        if tar -czf "$archive_file" "$(basename "$BACKUP_DIR")" 2>"${BACKUP_DIR}/compress.log"; then
+        if tar -czf "$archive_file" "$(basename "$BACKUP_DIR")" 2>"$compress_log"; then
             local compressed_size
             compressed_size=$(du -sh "$archive_file" | cut -f1)
             
             log_info "Backup compressed: $archive_file ($compressed_size)"
             
-            # Remove uncompressed directory
+            # Update manifest before removing directory
+            echo "compressed_file=${archive_file}" >> "$BACKUP_MANIFEST"
+            echo "compressed_size=${compressed_size}" >> "$BACKUP_MANIFEST"
+            
+            # Remove uncompressed directory and temp log
             rm -rf "$BACKUP_DIR"
+            rm -f "$compress_log"
             
             BACKUP_DIR="$archive_file"
-            echo "compressed_file=${archive_file}" >> "$BACKUP_MANIFEST" 2>/dev/null || true
-            echo "compressed_size=${compressed_size}" >> "$BACKUP_MANIFEST" 2>/dev/null || true
         else
             log_warn "Compression failed, keeping uncompressed backup"
+            log_warn "Check $compress_log for details"
+            if [ -f "$compress_log" ]; then
+                cat "$compress_log"
+            fi
             COMPRESS="false"
         fi
     fi
     
     # Set permissions
-    sudo chown -R "${ALFRESCO_USER:-$USER}:${ALFRESCO_USER:-$USER}" "$BACKUP_DIR" 2>/dev/null || true
+    if [ -e "$BACKUP_DIR" ]; then
+        sudo chown -R "${ALFRESCO_USER:-$USER}:${ALFRESCO_USER:-$USER}" "$BACKUP_DIR" 2>/dev/null || true
+    fi
     
     log_info "Backup finalized"
 }
@@ -589,14 +599,14 @@ cleanup_old_backups() {
     while IFS= read -r -d '' old_backup; do
         log_info "Removing old backup: $(basename "$old_backup")"
         rm -rf "$old_backup"
-        ((deleted++))
+        deleted=$((deleted + 1))
     done < <(find "$BACKUP_OUTPUT_DIR" -maxdepth 1 -name "${BACKUP_NAME}_*" -type d -mtime +"$KEEP_DAYS" -print0 2>/dev/null)
     
     # Find and delete old backup archives
     while IFS= read -r -d '' old_archive; do
         log_info "Removing old archive: $(basename "$old_archive")"
         rm -f "$old_archive"
-        ((deleted++))
+        deleted=$((deleted + 1))
     done < <(find "$BACKUP_OUTPUT_DIR" -maxdepth 1 -name "${BACKUP_NAME}_*.tar.gz" -type f -mtime +"$KEEP_DAYS" -print0 2>/dev/null)
     
     if [ $deleted -gt 0 ]; then
