@@ -458,12 +458,30 @@ confirm_restore() {
 restore_database() {
     log_step "Restoring PostgreSQL database..."
     
+    # Ensure PostgreSQL is running and ready
+    if ! systemctl is-active --quiet postgresql 2>/dev/null; then
+        log_info "Starting PostgreSQL..."
+        sudo systemctl start postgresql
+    fi
+    
+    # Wait for PostgreSQL to be ready
+    local attempts=0
+    while ! sudo -u postgres pg_isready -q 2>/dev/null; do
+        ((attempts++)) || true
+        if [ $attempts -ge 30 ]; then
+            log_error "PostgreSQL failed to become ready within 30 seconds"
+            return 1
+        fi
+        sleep 1
+    done
+    log_info "PostgreSQL is ready"
+    
     # Find database backup file
     local db_dump
     db_dump=$(find "${BACKUP_EXTRACTED_DIR}" -name "database_*.dump" 2>/dev/null | head -1)
     
     local db_sql
-    db_sql=$(find "${BACKUP_EXTRACTED_DIR}" -name "database_*.sql" 2>/dev/null | head -1)
+    db_sql=$(find "${BACKUP_EXTRACTED_DIR}" -name "database_*.sql" ! -name "*.dump" 2>/dev/null | head -1)
     
     if [ -z "$db_dump" ] && [ -z "$db_sql" ]; then
         log_warn "No database backup found, skipping database restore"
@@ -475,42 +493,79 @@ restore_database() {
         return 0
     fi
     
+    # Create a persistent log location
+    local db_log="${BACKUP_EXTRACTED_DIR}/db_restore.log"
+    
     # Drop and recreate database
     log_info "Dropping existing database..."
-    sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${ALFRESCO_DB_NAME};" 2>/dev/null || true
+    sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${ALFRESCO_DB_NAME};" 2>>"$db_log" || true
     
     log_info "Creating fresh database..."
-    sudo -u postgres psql -c "CREATE DATABASE ${ALFRESCO_DB_NAME} OWNER ${ALFRESCO_DB_USER} ENCODING 'UTF8';"
+    sudo -u postgres psql -c "CREATE DATABASE ${ALFRESCO_DB_NAME} OWNER ${ALFRESCO_DB_USER} ENCODING 'UTF8';" 2>>"$db_log"
+    
+    # Grant privileges to alfresco user
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${ALFRESCO_DB_NAME} TO ${ALFRESCO_DB_USER};" 2>>"$db_log" || true
     
     # Restore from custom format dump (preferred) or plain SQL
+    local restore_success=false
+    
     if [ -n "$db_dump" ] && [ -f "$db_dump" ]; then
         log_info "Restoring from custom dump: $(basename "$db_dump")"
-        sudo -u postgres pg_restore \
+        
+        # pg_restore returns non-zero on warnings, so we capture output and check manually
+        if sudo -u postgres pg_restore \
             --dbname="$ALFRESCO_DB_NAME" \
             --verbose \
             --no-owner \
             --no-privileges \
-            "$db_dump" 2>"${RESTORE_WORK_DIR}/db_restore.log" || {
-                log_warn "pg_restore completed with warnings (check ${RESTORE_WORK_DIR}/db_restore.log)"
-            }
-    elif [ -n "$db_sql" ] && [ -f "$db_sql" ]; then
+            --role="${ALFRESCO_DB_USER}" \
+            "$db_dump" 2>>"$db_log"; then
+            restore_success=true
+        else
+            # Check if it's just warnings (common with pg_restore)
+            if grep -q "pg_restore: error:" "$db_log" 2>/dev/null; then
+                log_warn "pg_restore completed with errors (check $db_log)"
+            else
+                log_info "pg_restore completed (warnings logged to $db_log)"
+                restore_success=true
+            fi
+        fi
+    fi
+    
+    # If custom dump failed or not found, try plain SQL
+    if [ "$restore_success" = "false" ] && [ -n "$db_sql" ] && [ -f "$db_sql" ]; then
         log_info "Restoring from SQL dump: $(basename "$db_sql")"
-        sudo -u postgres psql \
+        if sudo -u postgres psql \
             --dbname="$ALFRESCO_DB_NAME" \
             --file="$db_sql" \
-            2>"${RESTORE_WORK_DIR}/db_restore.log" || {
-                log_warn "psql completed with warnings (check ${RESTORE_WORK_DIR}/db_restore.log)"
-            }
+            2>>"$db_log"; then
+            restore_success=true
+        else
+            log_warn "psql completed with warnings (check $db_log)"
+            restore_success=true  # psql often returns non-zero on warnings
+        fi
     fi
+    
+    # Grant schema privileges to alfresco user
+    sudo -u postgres psql -d "$ALFRESCO_DB_NAME" -c "GRANT ALL ON SCHEMA public TO ${ALFRESCO_DB_USER};" 2>>"$db_log" || true
+    sudo -u postgres psql -d "$ALFRESCO_DB_NAME" -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${ALFRESCO_DB_USER};" 2>>"$db_log" || true
+    sudo -u postgres psql -d "$ALFRESCO_DB_NAME" -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${ALFRESCO_DB_USER};" 2>>"$db_log" || true
     
     # Verify restore
     local table_count
-    table_count=$(sudo -u postgres psql -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" "$ALFRESCO_DB_NAME" 2>/dev/null)
+    table_count=$(sudo -u postgres psql -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" "$ALFRESCO_DB_NAME" 2>/dev/null || echo "0")
     
-    if [ "$table_count" -gt 0 ]; then
+    if [ "$table_count" -gt 0 ] 2>/dev/null; then
         log_info "Database restored successfully ($table_count tables)"
     else
         log_error "Database restore may have failed (no tables found)"
+        log_error "Check $db_log for details"
+        # Show last few lines of log
+        if [ -f "$db_log" ]; then
+            echo "--- Last 10 lines of database restore log ---"
+            tail -10 "$db_log"
+            echo "--- End of log ---"
+        fi
     fi
 }
 
@@ -608,7 +663,7 @@ restore_configuration() {
         # Restore file
         if sudo cp -a "$backup_file" "$target_path" 2>/dev/null; then
             log_info "Restored: $target_path"
-            ((restored++))
+            restored=$((restored + 1))
         else
             log_warn "Failed to restore: $target_path"
         fi
