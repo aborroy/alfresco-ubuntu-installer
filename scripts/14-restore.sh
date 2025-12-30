@@ -46,6 +46,9 @@ INCLUDE_SOLR="true"
 FORCE="false"
 DRY_RUN="false"
 
+# Track restore errors (so the script does not claim success on failures)
+RESTORE_FAILED="false"
+
 # Working directory for extraction
 RESTORE_WORK_DIR=""
 BACKUP_EXTRACTED_DIR=""
@@ -142,22 +145,24 @@ main() {
     # Perform restore based on type
     case "$RESTORE_TYPE" in
         full)
-            restore_database
-            restore_content_store
-            restore_configuration
-            [ "$INCLUDE_SOLR" = "true" ] && restore_solr_indexes
+            restore_database || RESTORE_FAILED="true"
+            restore_content_store || RESTORE_FAILED="true"
+            restore_configuration || RESTORE_FAILED="true"
+            if [ "$INCLUDE_SOLR" = "true" ]; then
+                restore_solr_indexes || RESTORE_FAILED="true"
+            fi
             ;;
         db)
-            restore_database
+            restore_database || RESTORE_FAILED="true"
             ;;
         content)
-            restore_content_store
+            restore_content_store || RESTORE_FAILED="true"
             ;;
         config)
-            restore_configuration
+            restore_configuration || RESTORE_FAILED="true"
             ;;
         solr)
-            restore_solr_indexes
+            restore_solr_indexes || RESTORE_FAILED="true"
             ;;
     esac
     
@@ -166,6 +171,10 @@ main() {
     
     # Display summary
     display_summary
+
+    if [ "$RESTORE_FAILED" = "true" ]; then
+        exit 1
+    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -195,6 +204,37 @@ validate_backup() {
     fi
     
     log_info "Backup path: $BACKUP_PATH"
+}
+
+# -----------------------------------------------------------------------------
+# Ensure PostgreSQL can read extracted backup files
+# -----------------------------------------------------------------------------
+ensure_postgres_can_read() {
+    # pg_restore/psql are executed as user 'postgres' via sudo -u postgres.
+    # If the extracted files are only readable by root (common with tar
+    # archives created as root), the restore will fail with Permission denied.
+    local path="$1"
+
+    [ -z "$path" ] && return 0
+    [ ! -e "$path" ] && return 0
+
+    # If postgres already can read, do nothing.
+    if sudo -u postgres test -r "$path" 2>/dev/null; then
+        return 0
+    fi
+
+    # Prefer ACL so we do not make files world-readable.
+    if command -v setfacl >/dev/null 2>&1; then
+        sudo setfacl -m u:postgres:rX "$path" 2>/dev/null || true
+    else
+        # Fallback: allow other-users read/execute.
+        # (Execute on directories is required to traverse.)
+        if [ -d "$path" ]; then
+            sudo chmod o+rX "$path" 2>/dev/null || true
+        else
+            sudo chmod o+r "$path" 2>/dev/null || true
+        fi
+    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -487,6 +527,11 @@ restore_database() {
         log_warn "No database backup found, skipping database restore"
         return 0
     fi
+
+    # Ensure postgres can read the extracted files (otherwise pg_restore/psql fail)
+    ensure_postgres_can_read "${BACKUP_EXTRACTED_DIR}"
+    [ -n "$db_dump" ] && ensure_postgres_can_read "$db_dump"
+    [ -n "$db_sql" ] && ensure_postgres_can_read "$db_sql"
     
     if [ "$DRY_RUN" = "true" ]; then
         log_info "[DRY RUN] Would restore database from: ${db_dump:-$db_sql}"
@@ -566,6 +611,8 @@ restore_database() {
             tail -10 "$db_log"
             echo "--- End of log ---"
         fi
+
+        return 1
     fi
 }
 
@@ -773,6 +820,15 @@ display_summary() {
         return 0
     fi
     
+    if [ "$RESTORE_FAILED" = "true" ]; then
+        log_error "Restore finished with errors. Review logs above and fix issues before starting services."
+        echo ""
+        log_info "Next steps:"
+        log_info "  1. Review logs (especially database restore log if applicable)"
+        log_info "  2. Re-run restore after fixing the issue"
+        return 1
+    fi
+
     log_info "Restore completed successfully!"
     echo ""
     log_info "Next steps:"
