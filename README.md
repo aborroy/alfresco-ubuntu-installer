@@ -206,7 +206,7 @@ Select a profile during configuration:
 # List available profiles
 bash scripts/00-generate-config.sh --list-profiles
 
-# Use default (23.x - recommended)
+# Use default (23.x)
 bash scripts/00-generate-config.sh
 
 # Use Alfresco 7.4 (legacy support)
