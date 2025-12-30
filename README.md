@@ -576,7 +576,6 @@ flowchart TB
         end
         
         nginx --> tomcat
-        aca <--> tomcat
         tomcat <--> postgres
         tomcat <--> content
         tomcat <--> activemq
