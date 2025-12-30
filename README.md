@@ -53,6 +53,7 @@ flowchart TB
     
     solr <--> solrindex
     share <--> alfresco
+    aca <--> alfresco
 ```
 
 ## Deployment Options
