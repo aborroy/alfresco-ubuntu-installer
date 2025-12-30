@@ -160,7 +160,11 @@ alfresco-ubuntu-installer/
 ├── config/
 │   ├── alfresco.env.template    # Configuration template
 │   ├── alfresco.env             # Your configuration (gitignored)
-│   └── versions.conf            # Pinned component versions
+│   ├── versions.conf            # Active version profile
+│   └── profiles/                # Version profiles
+│       ├── versions-7.4.conf    # Alfresco 7.4 LTS
+│       ├── versions-23.x.conf   # Alfresco 23.x (default)
+│       └── versions-25.x.conf   # Alfresco 25.x (latest)
 ├── scripts/
 │   ├── common.sh                # Shared functions
 │   ├── 00-generate-config.sh    # Generate secure configuration
@@ -186,26 +190,54 @@ alfresco-ubuntu-installer/
 
 ## Configuration
 
+### Version Profiles
+
+The installer supports multiple Alfresco versions through pre-configured profiles:
+
+| Profile | Alfresco | Java | Tomcat | PostgreSQL | Status |
+|---------|----------|------|--------|------------|--------|
+| **7.4** | 7.4.2 | 17 | 9.0.x | 14 | LTS (legacy) |
+| **23.x** | 23.4.1 | 17 | 10.1.x | 16 | **Current stable** |
+| **25.x** | 25.2.0 | 17/21 | 10.1.x | 16 | Latest |
+
+Select a profile during configuration:
+
+```bash
+# List available profiles
+bash scripts/00-generate-config.sh --list-profiles
+
+# Use default (23.x - recommended)
+bash scripts/00-generate-config.sh
+
+# Use Alfresco 7.4 (legacy support)
+bash scripts/00-generate-config.sh --profile 7.4
+
+# Use Alfresco 25.x (latest)
+bash scripts/00-generate-config.sh --profile 25.x
+```
+
 ### Version Configuration (`config/versions.conf`)
 
-Pinned, tested version combinations:
+The active version profile. Default configuration (23.x):
 
 ```bash
 # Alfresco Components
-ALFRESCO_VERSION="23.2.1"
-ALFRESCO_SEARCH_VERSION="2.0.8.2"
-ALFRESCO_TRANSFORM_VERSION="5.1.7"
+ALFRESCO_VERSION="23.4.1"
+ALFRESCO_SEARCH_VERSION="2.0.14"
+ALFRESCO_TRANSFORM_VERSION="5.2.4"
 
 # Infrastructure
 POSTGRESQL_VERSION="16"
-TOMCAT_VERSION="10.1.28"
-ACTIVEMQ_VERSION="6.1.2"
+TOMCAT_VERSION="10.1.48"
+ACTIVEMQ_VERSION="5.18.7"
 JAVA_VERSION="17"
 
 # Frontend
-ACA_VERSION="5.0.0"
+ACA_VERSION="5.2.0"
 NODEJS_VERSION="20"
 ```
+
+Custom profiles can be created in `config/profiles/` by copying an existing profile.
 
 ### Environment Configuration (`config/alfresco.env`)
 
@@ -331,21 +363,21 @@ $ bash scripts/11-start_services.sh
 
 ### 3. Apache Tomcat
 
-- **Version**: 10.1.28
+- **Version**: 10.1.48
 - **Home**: `/home/ubuntu/tomcat`
 - **Logs**: `/home/ubuntu/tomcat/logs`
 - **Memory**: Configurable via `TOMCAT_XMS`/`TOMCAT_XMX`
 
 ### 4. Apache ActiveMQ
 
-- **Version**: 5.17.8
+- **Version**: 5.18.7
 - **Home**: `/home/ubuntu/activemq`
 - **OpenWire Port**: 61616
 - **Web Console**: 8161
 
 ### 5. Alfresco Content Services
 
-- **Version**: 23.2.1 Community
+- **Version**: 23.4.1 Community
 - **Context**: `/alfresco`
 - **Data**: `/home/ubuntu/alf_data`
 - **Config**: `/home/ubuntu/tomcat/shared/classes/alfresco-global.properties`
@@ -357,21 +389,21 @@ $ bash scripts/11-start_services.sh
 
 ### 7. Alfresco Search Services (Solr)
 
-- **Version**: 2.0.8.2
+- **Version**: 2.0.14
 - **Home**: `/home/ubuntu/alfresco-search-services`
 - **Port**: 8983
 - **Authentication**: Shared secret
 
 ### 8. Transform Service
 
-- **Version**: 5.1.7 (All-In-One)
+- **Version**: 5.2.4 (All-In-One)
 - **Home**: `/home/ubuntu/transform`
 - **Port**: 8090
 - **Dependencies**: ImageMagick, LibreOffice, ExifTool
 
 ### 9. Alfresco Content App
 
-- **Version**: 5.0.0
+- **Version**: 5.2.0
 - **Source**: `/home/ubuntu/alfresco-content-app`
 - **Build Output**: `/home/ubuntu/alfresco-content-app/dist/content-ce`
 
@@ -844,7 +876,28 @@ curl http://localhost/alfresco/api/-default-/public/alfresco/versions/1/probes/-
 
 ## Upgrading
 
-To upgrade components:
+### Using Version Profiles
+
+To upgrade to a different Alfresco version:
+
+```bash
+# Switch to a different version profile
+bash scripts/00-generate-config.sh --profile 25.x --force
+
+# Re-run installation scripts
+bash scripts/05-download_alfresco_resources.sh
+bash scripts/06-install_alfresco.sh
+bash scripts/07-install_solr.sh
+bash scripts/08-install_transform.sh
+
+# Restart services
+bash scripts/12-stop_services.sh
+bash scripts/11-start_services.sh
+```
+
+### Manual Version Updates
+
+To upgrade individual components:
 
 1. Update versions in `config/versions.conf`
 2. Re-run the relevant installation script

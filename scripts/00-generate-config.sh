@@ -2,13 +2,21 @@
 # =============================================================================
 # Configuration Generator
 # =============================================================================
-# Generates a secure alfresco.env configuration file with random passwords.
+# Generates a secure alfresco.env configuration file with random passwords
+# and optionally selects a version profile.
 #
 # Usage:
-#   bash scripts/00-generate-config.sh [--force]
+#   bash scripts/00-generate-config.sh [OPTIONS]
 #
 # Options:
-#   --force    Overwrite existing configuration file
+#   --force              Overwrite existing configuration file
+#   --profile PROFILE    Select version profile: 7.4, 23.x, 25.x (default: 23.x)
+#   --list-profiles      List available version profiles
+#
+# Examples:
+#   bash scripts/00-generate-config.sh                    # Use default (23.x)
+#   bash scripts/00-generate-config.sh --profile 7.4      # Use Alfresco 7.4
+#   bash scripts/00-generate-config.sh --profile 25.x     # Use Alfresco 25.x
 # =============================================================================
 
 set -euo pipefail
@@ -16,17 +24,21 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${SCRIPT_DIR}/../config"
 CONFIG_FILE="${CONFIG_DIR}/alfresco.env"
+VERSIONS_FILE="${CONFIG_DIR}/versions.conf"
+PROFILES_DIR="${CONFIG_DIR}/profiles"
 # shellcheck source=/dev/null
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 # -----------------------------------------------------------------------------
 # Password Generation
@@ -43,10 +55,73 @@ generate_hex_secret() {
 }
 
 # -----------------------------------------------------------------------------
+# Profile Management
+# -----------------------------------------------------------------------------
+list_profiles() {
+    echo ""
+    echo "Available Alfresco Version Profiles:"
+    echo "====================================="
+    echo ""
+    
+    for profile in "$PROFILES_DIR"/versions-*.conf; do
+        if [ -f "$profile" ]; then
+            local name
+            name=$(basename "$profile" | sed 's/versions-\(.*\)\.conf/\1/')
+            local version
+            version=$(grep "^ALFRESCO_VERSION=" "$profile" | cut -d'"' -f2)
+            local java
+            java=$(grep "^JAVA_VERSION=" "$profile" | cut -d'"' -f2)
+            local tomcat
+            tomcat=$(grep "^TOMCAT_VERSION=" "$profile" | cut -d'"' -f2)
+            
+            printf "  %-8s  Alfresco %-8s  Java %-4s  Tomcat %s\n" "$name" "$version" "$java" "$tomcat"
+        fi
+    done
+    
+    echo ""
+    echo "Usage: $0 --profile <profile-name>"
+    echo ""
+}
+
+select_profile() {
+    local profile_name=$1
+    local profile_file="${PROFILES_DIR}/versions-${profile_name}.conf"
+    
+    if [ ! -f "$profile_file" ]; then
+        log_error "Profile not found: $profile_name"
+        log_error "Available profiles:"
+        for p in "$PROFILES_DIR"/versions-*.conf; do
+            if [ -f "$p" ]; then
+                echo "  - $(basename "$p" | sed 's/versions-\(.*\)\.conf/\1/')"
+            fi
+        done
+        exit 1
+    fi
+    
+    # Copy profile to versions.conf
+    cp "$profile_file" "$VERSIONS_FILE"
+    log_info "Selected version profile: $profile_name"
+    
+    # Display key versions
+    local alf_version
+    local search_version
+    local transform_version
+    alf_version=$(grep "^ALFRESCO_VERSION=" "$VERSIONS_FILE" | cut -d'"' -f2)
+    search_version=$(grep "^ALFRESCO_SEARCH_VERSION=" "$VERSIONS_FILE" | cut -d'"' -f2)
+    transform_version=$(grep "^ALFRESCO_TRANSFORM_VERSION=" "$VERSIONS_FILE" | cut -d'"' -f2)
+    
+    log_info "  Alfresco:  $alf_version"
+    log_info "  Search:    $search_version"
+    log_info "  Transform: $transform_version"
+}
+
+# -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
 main() {
     local force=false
+    local profile="23.x"  # Default profile
+    local env_only=false
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -54,6 +129,29 @@ main() {
             --force)
                 force=true
                 shift
+                ;;
+            --profile)
+                profile="$2"
+                shift 2
+                ;;
+            --list-profiles)
+                list_profiles
+                exit 0
+                ;;
+            --env-only)
+                env_only=true
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [OPTIONS]"
+                echo ""
+                echo "Options:"
+                echo "  --force              Overwrite existing configuration"
+                echo "  --profile PROFILE    Select version profile: 7.4, 23.x, 25.x"
+                echo "  --list-profiles      List available version profiles"
+                echo "  --env-only           Only generate alfresco.env (skip versions.conf)"
+                echo "  -h, --help           Show this help message"
+                exit 0
                 ;;
             *)
                 log_error "Unknown option: $1"
@@ -72,7 +170,16 @@ main() {
     # Ensure config directory exists
     mkdir -p "$CONFIG_DIR"
     
-    log_info "Generating secure configuration..."
+    log_step "Generating Alfresco configuration..."
+    echo ""
+    
+    # Select version profile (unless env-only)
+    if [ "$env_only" != "true" ]; then
+        select_profile "$profile"
+        echo ""
+    fi
+    
+    log_info "Generating secure credentials..."
     
     # Generate random passwords
     local db_password
