@@ -126,7 +126,8 @@ alfresco-ubuntu-installer/
 │   ├── 08-install_transform.sh  # Transform Service
 │   ├── 09-build_aca.sh          # Alfresco Content App
 │   ├── 10-install_nginx.sh      # Nginx reverse proxy
-│   └── 11-start_services.sh     # Start all services
+│   ├── 11-start_services.sh     # Start all services
+│   └── 12-stop_services.sh      # Stop all services
 ├── downloads/                   # Downloaded artifacts (gitignored)
 ├── .github/workflows/
 │   └── ci.yml                   # CI/CD pipeline
@@ -339,6 +340,54 @@ $ bash scripts/11-start_services.sh
 bash scripts/11-start_services.sh
 ```
 
+Options:
+- `--no-wait` - Start services without waiting for health checks
+
+### Stop All Services
+
+```bash
+bash scripts/12-stop_services.sh
+```
+
+The stop script shuts down services in the correct order (reverse of startup) to ensure data integrity:
+
+1. **Nginx** - Stops accepting new connections
+2. **Solr** - Commits pending index changes
+3. **Tomcat** - Allows in-flight requests to complete
+4. **Transform** - Stops document transformation
+5. **ActiveMQ** - Drains pending messages
+6. **PostgreSQL** - Stops last to ensure all data is persisted
+
+Options:
+- `--force` - Force kill services that don't stop gracefully (uses SIGKILL)
+- `--no-wait` - Stop services without waiting for graceful shutdown
+
+Example output:
+```bash
+$ bash scripts/12-stop_services.sh
+
+[STEP] Stopping Alfresco services...
+[STEP] Stopping Nginx...
+[INFO] Nginx stopped successfully
+[STEP] Stopping Solr...
+[INFO] Solr will flush pending changes...
+[INFO] Solr stopped successfully
+...
+
+┌─────────────────────────────────────────────────────────────┐
+│                    SERVICE STATUS                          │
+├────────────────────┬────────────────────────────────────────┤
+│ Nginx              │ v stopped                              │
+│ Solr               │ v stopped                              │
+│ Tomcat (Alfresco)  │ v stopped                              │
+│ Transform Service  │ v stopped                              │
+│ ActiveMQ           │ v stopped                              │
+│ PostgreSQL         │ v stopped                              │
+└────────────────────┴────────────────────────────────────────┘
+
+[INFO] All services stopped successfully!
+```
+
 ### Start Individual Services
 
 ```bash
@@ -348,6 +397,18 @@ sudo systemctl start transform
 sudo systemctl start tomcat
 sudo systemctl start solr
 sudo systemctl start nginx
+```
+
+### Stop Individual Services
+
+```bash
+# Stop in reverse order for safety
+sudo systemctl stop nginx
+sudo systemctl stop solr
+sudo systemctl stop tomcat
+sudo systemctl stop transform
+sudo systemctl stop activemq
+sudo systemctl stop postgresql
 ```
 
 ### Check Service Status
