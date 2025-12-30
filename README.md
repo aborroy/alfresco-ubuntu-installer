@@ -872,45 +872,4 @@ curl http://localhost/alfresco/api/-default-/public/alfresco/versions/1/probes/-
 2. **Configure HTTPS** in Nginx for production
 3. **Restrict network access** to internal ports (8080, 8983, etc.)
 4. **Keep `config/alfresco.env` secure** - it contains passwords
-5. **Regular backups** of `/home/ubuntu/alf_data` and PostgreSQL
-
-## Upgrading
-
-### Using Version Profiles
-
-To upgrade to a different Alfresco version:
-
-```bash
-# Switch to a different version profile
-bash scripts/00-generate-config.sh --profile 25.x --force
-
-# Re-run installation scripts
-bash scripts/05-download_alfresco_resources.sh
-bash scripts/06-install_alfresco.sh
-bash scripts/07-install_solr.sh
-bash scripts/08-install_transform.sh
-
-# Restart services
-bash scripts/12-stop_services.sh
-bash scripts/11-start_services.sh
-```
-
-### Manual Version Updates
-
-To upgrade individual components:
-
-1. Update versions in `config/versions.conf`
-2. Re-run the relevant installation script
-3. Restart services
-
-For Transform Service (uses symlink):
-```bash
-# Copy new JAR
-cp new-transform-core-aio-X.Y.Z.jar /home/ubuntu/transform/
-
-# Update symlink
-ln -sf alfresco-transform-core-aio-X.Y.Z.jar /home/ubuntu/transform/alfresco-transform-core-aio.jar
-
-# Restart
-sudo systemctl restart transform
-```
+5. **Regular backups**
