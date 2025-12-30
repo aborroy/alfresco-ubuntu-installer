@@ -560,7 +560,7 @@ All components on one machine (development/small production):
 flowchart TB
     subgraph server["Single Server"]
         subgraph web["Web Layer"]
-            nginx["Nginx :80"]
+            nginx["Nginx :80 Content App"]
         end
         
         subgraph application["Application Layer"]
@@ -576,6 +576,7 @@ flowchart TB
         end
         
         nginx --> tomcat
+        aca <--> tomcat
         tomcat <--> postgres
         tomcat <--> content
         tomcat <--> activemq
