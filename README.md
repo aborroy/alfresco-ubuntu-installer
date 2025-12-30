@@ -36,7 +36,7 @@ flowchart TB
 
     subgraph data["Data Tier"]
         postgres[("PostgreSQL :5432")]
-        contentstore[("Content Store\nalf_data")]
+        contentstore[("Content Store - alf_data")]
         solrindex[("Solr Index")]
     end
 
@@ -99,45 +99,6 @@ Ensure these ports are available:
 | 61616 | ActiveMQ | OpenWire protocol |
 
 ## Quick Start
-
-### Installation Flow
-
-```mermaid
-flowchart LR
-    subgraph prep["1. Preparation"]
-        clone["Clone Repo"]
-        config["Generate Config"]
-    end
-
-    subgraph infra["2. Infrastructure"]
-        postgres["PostgreSQL"]
-        java["Java JDK"]
-        tomcat["Tomcat"]
-        activemq["ActiveMQ"]
-    end
-
-    subgraph alfresco["3. Alfresco"]
-        download["Download\nArtifacts"]
-        install["Install\nAlfresco"]
-        solr["Solr Search"]
-        transform["Transform\nService"]
-    end
-
-    subgraph frontend["4. Frontend"]
-        aca["Build\nContent App"]
-        nginx["Nginx\nProxy"]
-    end
-
-    subgraph run["5. Run"]
-        start["Start\nServices"]
-    end
-
-    clone --> config
-    config --> postgres --> java --> tomcat --> activemq
-    activemq --> download --> install --> solr --> transform
-    transform --> aca --> nginx
-    nginx --> start
-```
 
 ### 1. Clone the Repository
 
@@ -603,7 +564,7 @@ flowchart TB
         end
         
         subgraph application["Application Layer"]
-            tomcat["Tomcat :8080\n(Alfresco + Share)"]
+            tomcat["Tomcat :8080 (Alfresco + Share)"]
             transform["Transform :8090"]
             activemq["ActiveMQ :61616"]
             solr["Solr :8983"]
@@ -637,12 +598,12 @@ flowchart TB
     users["Users / Load Balancer"]
     
     subgraph web_tier["Web Server(s)"]
-        nginx1["Nginx :80\n+ Content App"]
+        nginx1["Nginx :80 Content App"]
     end
     
     subgraph app_tier["Application Server(s)"]
         subgraph app1["App Server 1"]
-            tomcat1["Tomcat :8080\n(Alfresco + Share)"]
+            tomcat1["Tomcat :8080 (Alfresco + Share)"]
             transform1["Transform :8090"]
         end
     end
