@@ -298,12 +298,14 @@ backup_database() {
         local db_size
         db_size=$(sudo -u postgres psql -tAc "SELECT pg_size_pretty(pg_database_size('$ALFRESCO_DB_NAME'));" 2>/dev/null)
         
-        echo "database=${ALFRESCO_DB_NAME}" >> "$BACKUP_MANIFEST"
-        echo "database_size=${db_size}" >> "$BACKUP_MANIFEST"
-        echo "database_dump=${db_backup_file}.dump" >> "$BACKUP_MANIFEST"
-        echo "database_sql=${db_backup_file}" >> "$BACKUP_MANIFEST"
-        
         log_info "Database size: $db_size"
+        
+        {
+            echo "database=${ALFRESCO_DB_NAME}"
+            echo "database_size=${db_size}"
+            echo "database_dump=${db_backup_file}.dump"
+            echo "database_sql=${db_backup_file}"
+        } >> "$BACKUP_MANIFEST"
     else
         log_error "Database backup failed. Check ${BACKUP_DIR}/database_backup.log"
         exit 1
@@ -337,17 +339,18 @@ backup_content_store() {
     log_info "Copying content store (this may take a while)..."
     
     # Use rsync for efficient copy with progress
+    local rsync_result=0
     if command -v rsync &>/dev/null; then
         if [ "$QUIET" = "true" ]; then
-            sudo rsync -a "$alf_data/" "$content_backup/" 2>"${BACKUP_DIR}/content_backup.log"
+            sudo rsync -a "$alf_data/" "$content_backup/" 2>"${BACKUP_DIR}/content_backup.log" || rsync_result=$?
         else
-            sudo rsync -a --info=progress2 "$alf_data/" "$content_backup/" 2>"${BACKUP_DIR}/content_backup.log"
+            sudo rsync -a --info=progress2 "$alf_data/" "$content_backup/" 2>"${BACKUP_DIR}/content_backup.log" || rsync_result=$?
         fi
     else
-        sudo cp -a "$alf_data" "$content_backup" 2>"${BACKUP_DIR}/content_backup.log"
+        sudo cp -a "$alf_data" "$content_backup" 2>"${BACKUP_DIR}/content_backup.log" || rsync_result=$?
     fi
     
-    if [ $? -eq 0 ]; then
+    if [ $rsync_result -eq 0 ]; then
         log_info "Content store backup completed"
         echo "content_store=${content_backup}" >> "$BACKUP_MANIFEST"
         echo "content_store_size=${content_size}" >> "$BACKUP_MANIFEST"
@@ -393,7 +396,8 @@ backup_configuration() {
         if sudo test -e "$config"; then
             # Preserve directory structure
             local relative_path="${config#/}"
-            local target_dir="${config_backup}/$(dirname "$relative_path")"
+            local target_dir
+            target_dir="${config_backup}/$(dirname "$relative_path")"
             mkdir -p "$target_dir"
             
             if sudo cp -a "$config" "$target_dir/" 2>/dev/null; then
@@ -451,17 +455,18 @@ backup_solr_indexes() {
     
     mkdir -p "$solr_backup"
     
+    local solr_rsync_result=0
     if command -v rsync &>/dev/null; then
         if [ "$QUIET" = "true" ]; then
-            sudo rsync -a "$solr_data/" "$solr_backup/" 2>"${BACKUP_DIR}/solr_backup.log"
+            sudo rsync -a "$solr_data/" "$solr_backup/" 2>"${BACKUP_DIR}/solr_backup.log" || solr_rsync_result=$?
         else
-            sudo rsync -a --info=progress2 "$solr_data/" "$solr_backup/" 2>"${BACKUP_DIR}/solr_backup.log"
+            sudo rsync -a --info=progress2 "$solr_data/" "$solr_backup/" 2>"${BACKUP_DIR}/solr_backup.log" || solr_rsync_result=$?
         fi
     else
-        sudo cp -a "$solr_data"/* "$solr_backup/" 2>"${BACKUP_DIR}/solr_backup.log"
+        sudo cp -a "$solr_data"/* "$solr_backup/" 2>"${BACKUP_DIR}/solr_backup.log" || solr_rsync_result=$?
     fi
     
-    if [ $? -eq 0 ]; then
+    if [ $solr_rsync_result -eq 0 ]; then
         log_info "Solr backup completed"
         echo "solr_backup=${solr_backup}" >> "$BACKUP_MANIFEST"
         echo "solr_size=${solr_size}" >> "$BACKUP_MANIFEST"
@@ -477,10 +482,12 @@ finalize_backup() {
     log_step "Finalizing backup..."
     
     # Add completion timestamp to manifest
-    echo "" >> "$BACKUP_MANIFEST"
-    echo "# Completion" >> "$BACKUP_MANIFEST"
-    echo "# ----------" >> "$BACKUP_MANIFEST"
-    echo "completed_at=$(date '+%Y-%m-%d %H:%M:%S %Z')" >> "$BACKUP_MANIFEST"
+    {
+        echo ""
+        echo "# Completion"
+        echo "# ----------"
+        echo "completed_at=$(date '+%Y-%m-%d %H:%M:%S %Z')"
+    } >> "$BACKUP_MANIFEST"
     
     # Calculate backup size
     local backup_size
@@ -560,7 +567,7 @@ display_summary() {
     
     echo ""
     echo "┌─────────────────────────────────────────────────────────────┐"
-    echo "│                    BACKUP COMPLETE                         │"
+    echo "│                    BACKUP COMPLETE                          │"
     echo "├─────────────────────────────────────────────────────────────┤"
     printf "│ %-59s │\n" "Type: $BACKUP_TYPE"
     printf "│ %-59s │\n" "Location: $BACKUP_DIR"

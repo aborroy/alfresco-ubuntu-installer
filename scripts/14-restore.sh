@@ -590,7 +590,7 @@ restore_configuration() {
     # Find and restore each file
     while IFS= read -r -d '' backup_file; do
         # Get relative path within backup
-        local relative_path="${backup_file#$backup_config/}"
+        local relative_path="${backup_file#"$backup_config"/}"
         local target_path="/${relative_path}"
         local target_dir
         target_dir=$(dirname "$target_path")
@@ -616,7 +616,7 @@ restore_configuration() {
     
     # Also handle directories (for things like keystore)
     while IFS= read -r -d '' backup_dir; do
-        local relative_path="${backup_dir#$backup_config/}"
+        local relative_path="${backup_dir#"$backup_config"/}"
         local target_path="/${relative_path}"
         
         if [ ! -d "$target_path" ]; then
