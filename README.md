@@ -128,7 +128,8 @@ alfresco-ubuntu-installer/
 │   ├── 10-install_nginx.sh      # Nginx reverse proxy
 │   ├── 11-start_services.sh     # Start all services
 │   ├── 12-stop_services.sh      # Stop all services
-│   └── 13-backup.sh             # Backup Alfresco data
+│   ├── 13-backup.sh             # Backup Alfresco data
+│   └── 14-restore.sh            # Restore from backup
 ├── downloads/                   # Downloaded artifacts (gitignored)
 ├── .github/workflows/
 │   └── ci.yml                   # CI/CD pipeline
@@ -578,9 +579,63 @@ A full backup includes:
 
 ### Restoring Backups
 
+The restore script recovers your Alfresco installation from a backup:
+
 ```bash
-# Restore from backup (coming soon)
-bash scripts/14-restore.sh --backup /home/ubuntu/backups/alfresco-backup_20240115_020000.tar.gz
+# Full restore (services will be stopped automatically)
+bash scripts/14-restore.sh --backup /home/ubuntu/backups/alfresco-backup_20240115.tar.gz
+
+# Restore with automatic confirmation
+bash scripts/14-restore.sh --backup backup.tar.gz --force
+
+# Preview restore without making changes
+bash scripts/14-restore.sh --backup backup.tar.gz --dry-run
+```
+
+#### Restore Types
+
+| Type | Command | Restores |
+|------|---------|----------|
+| **full** | `--type full` | Database + Content + Config + Solr (default) |
+| **db** | `--type db` | PostgreSQL database only |
+| **content** | `--type content` | Content store (alf_data) only |
+| **config** | `--type config` | Configuration files only |
+| **solr** | `--type solr` | Solr indexes only |
+
+#### Restore Options
+
+```bash
+# Database-only restore
+bash scripts/14-restore.sh --backup backup.tar.gz --type db
+
+# Skip Solr restore (indexes rebuild automatically)
+bash scripts/14-restore.sh --backup backup.tar.gz --no-solr
+
+# Force restore without prompts
+bash scripts/14-restore.sh --backup backup.tar.gz --force
+
+# Dry run to preview changes
+bash scripts/14-restore.sh --backup backup.tar.gz --dry-run
+```
+
+#### Restore Process
+
+1. **Validation** - Verifies backup integrity and contents
+2. **Service Stop** - Stops running services (prompts for confirmation)
+3. **Database** - Drops and recreates database, restores from dump
+4. **Content** - Moves existing alf_data aside, restores from backup
+5. **Configuration** - Restores config files (keeps .restore-backup copies)
+6. **Solr** - Restores indexes or lets them rebuild
+7. **Verification** - Displays summary and next steps
+
+#### Post-Restore Steps
+
+```bash
+# Start services after restore
+bash scripts/11-start_services.sh
+
+# Verify Alfresco is accessible
+curl http://localhost/alfresco/api/-default-/public/alfresco/versions/1/probes/-ready-
 ```
 
 ## Security Considerations
