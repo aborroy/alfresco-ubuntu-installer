@@ -127,7 +127,8 @@ alfresco-ubuntu-installer/
 │   ├── 09-build_aca.sh          # Alfresco Content App
 │   ├── 10-install_nginx.sh      # Nginx reverse proxy
 │   ├── 11-start_services.sh     # Start all services
-│   └── 12-stop_services.sh      # Stop all services
+│   ├── 12-stop_services.sh      # Stop all services
+│   └── 13-backup.sh             # Backup Alfresco data
 ├── downloads/                   # Downloaded artifacts (gitignored)
 ├── .github/workflows/
 │   └── ci.yml                   # CI/CD pipeline
@@ -502,6 +503,85 @@ For production deployments across multiple machines:
    - Web server: `09-10`
 
 3. **Ensure network connectivity** between machines on required ports.
+
+## Backup and Restore
+
+### Creating Backups
+
+The backup script creates complete or partial backups of your Alfresco installation:
+
+```bash
+# Full backup (recommended - stop services first)
+bash scripts/12-stop_services.sh
+bash scripts/13-backup.sh
+bash scripts/11-start_services.sh
+
+# Full backup with services running (hot backup)
+bash scripts/13-backup.sh --hot
+```
+
+#### Backup Types
+
+| Type | Command | Contents |
+|------|---------|----------|
+| **full** | `--type full` | Database + Content + Config + Solr (default) |
+| **db** | `--type db` | PostgreSQL database only |
+| **content** | `--type content` | Content store (alf_data) only |
+| **config** | `--type config` | Configuration files only |
+| **solr** | `--type solr` | Solr indexes only |
+
+#### Backup Options
+
+```bash
+# Database-only backup
+bash scripts/13-backup.sh --type db
+
+# Custom output location
+bash scripts/13-backup.sh --output /mnt/backup
+
+# Skip Solr indexes (faster, indexes can be rebuilt)
+bash scripts/13-backup.sh --no-solr
+
+# Keep backups for 7 days only
+bash scripts/13-backup.sh --keep 7
+
+# Uncompressed backup
+bash scripts/13-backup.sh --no-compress
+
+# Custom backup name
+bash scripts/13-backup.sh --name weekly-backup
+```
+
+#### Backup Contents
+
+A full backup includes:
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| Database | `database_alfresco.sql` | PostgreSQL dump (plain + custom format) |
+| Content Store | `alf_data/` | All documents and content |
+| Configuration | `config/` | alfresco-global.properties, server.xml, systemd units |
+| Solr Indexes | `solr/` | Search indexes (optional, can be rebuilt) |
+| Manifest | `manifest.txt` | Backup metadata and checksums |
+
+#### Backup Best Practices
+
+1. **Stop services** before backup for consistency (cold backup)
+2. **Skip Solr** with `--no-solr` for faster backups (indexes rebuild automatically)
+3. **Schedule regular backups** via cron:
+   ```bash
+   # Daily backup at 2 AM, keep 7 days
+   0 2 * * * /path/to/scripts/12-stop_services.sh && /path/to/scripts/13-backup.sh --keep 7 && /path/to/scripts/11-start_services.sh
+   ```
+4. **Store backups off-site** for disaster recovery
+5. **Test restores regularly** to verify backup integrity
+
+### Restoring Backups
+
+```bash
+# Restore from backup (coming soon)
+bash scripts/14-restore.sh --backup /home/ubuntu/backups/alfresco-backup_20240115_020000.tar.gz
+```
 
 ## Security Considerations
 
