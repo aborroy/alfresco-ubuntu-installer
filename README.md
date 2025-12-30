@@ -439,7 +439,7 @@ $ bash scripts/12-stop_services.sh
 ...
 
 ┌─────────────────────────────────────────────────────────────┐
-│                    SERVICE STATUS                          │
+│                    SERVICE STATUS                           │
 ├────────────────────┬────────────────────────────────────────┤
 │ Nginx              │ v stopped                              │
 │ Solr               │ v stopped                              │
