@@ -197,8 +197,8 @@ The installer supports multiple Alfresco versions through pre-configured profile
 | Profile | Alfresco | Java | Tomcat | PostgreSQL | Status |
 |---------|----------|------|--------|------------|--------|
 | **7.4** | 7.4.2 | 17 | 9.0.x | 14 | LTS (legacy) |
-| **23.x** | 23.4.1 | 17 | 10.1.x | 16 | **Current stable** |
-| **25.x** | 25.2.0 | 17/21 | 10.1.x | 16 | Latest |
+| **23.x** | 23.4.1 | 17 | 10.1.x | 16 | Maintained |
+| **25.x** | 25.2.0 | 17/21 | 10.1.x | 16 | Stable (newest) |
 
 Select a profile during configuration:
 
