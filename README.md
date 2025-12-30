@@ -51,7 +51,6 @@ flowchart TB
     alfresco <--> solr
     alfresco <--> transform
     
-    activemq <--> transform
     solr <--> solrindex
     share <--> alfresco
 ```
