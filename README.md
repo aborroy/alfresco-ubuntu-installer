@@ -8,6 +8,54 @@ Automated installation scripts for deploying **Alfresco Content Services Communi
 
 This project provides a collection of bash scripts to automate the installation and configuration of Alfresco Content Services on Ubuntu 22.04/24.04 LTS.
 
+### Architecture
+
+```mermaid
+flowchart TB
+    subgraph client["Client Layer"]
+        browser["Web Browser"]
+    end
+
+    subgraph web["Web Tier"]
+        nginx["Nginx :80/:443"]
+    end
+
+    subgraph app["Application Tier"]
+        subgraph tomcat["Tomcat :8080"]
+            alfresco["Alfresco Repository"]
+            share["Alfresco Share"]
+        end
+        aca["Content App"]
+    end
+
+    subgraph services["Service Tier"]
+        transform["Transform Service :8090"]
+        activemq["ActiveMQ :61616"]
+        solr["Solr :8983"]
+    end
+
+    subgraph data["Data Tier"]
+        postgres[("PostgreSQL :5432")]
+        contentstore[("Content Store\nalf_data")]
+        solrindex[("Solr Index")]
+    end
+
+    browser --> nginx
+    nginx --> aca
+    nginx --> alfresco
+    nginx --> share
+    
+    alfresco <--> postgres
+    alfresco <--> contentstore
+    alfresco <--> activemq
+    alfresco <--> solr
+    alfresco <--> transform
+    
+    activemq <--> transform
+    solr <--> solrindex
+    share <--> alfresco
+```
+
 ## Deployment Options
 
 Alfresco Platform supports multiple deployment approaches:
@@ -51,6 +99,45 @@ Ensure these ports are available:
 | 61616 | ActiveMQ | OpenWire protocol |
 
 ## Quick Start
+
+### Installation Flow
+
+```mermaid
+flowchart LR
+    subgraph prep["1. Preparation"]
+        clone["Clone Repo"]
+        config["Generate Config"]
+    end
+
+    subgraph infra["2. Infrastructure"]
+        postgres["PostgreSQL"]
+        java["Java JDK"]
+        tomcat["Tomcat"]
+        activemq["ActiveMQ"]
+    end
+
+    subgraph alfresco["3. Alfresco"]
+        download["Download\nArtifacts"]
+        install["Install\nAlfresco"]
+        solr["Solr Search"]
+        transform["Transform\nService"]
+    end
+
+    subgraph frontend["4. Frontend"]
+        aca["Build\nContent App"]
+        nginx["Nginx\nProxy"]
+    end
+
+    subgraph run["5. Run"]
+        start["Start\nServices"]
+    end
+
+    clone --> config
+    config --> postgres --> java --> tomcat --> activemq
+    activemq --> download --> install --> solr --> transform
+    transform --> aca --> nginx
+    nginx --> start
+```
 
 ### 1. Clone the Repository
 
@@ -336,6 +423,20 @@ $ bash scripts/11-start_services.sh
 
 ## Service Management
 
+### Service Lifecycle
+
+**Startup Order:**
+```mermaid
+flowchart LR
+    s1["1. PostgreSQL"] --> s2["2. ActiveMQ"] --> s3["3. Transform"] --> s4["4. Tomcat"] --> s5["5. Solr"] --> s6["6. Nginx"]
+```
+
+**Shutdown Order (reverse):**
+```mermaid
+flowchart RL
+    p1["1. Nginx"] --> p2["2. Solr"] --> p3["3. Tomcat"] --> p4["4. Transform"] --> p5["5. ActiveMQ"] --> p6["6. PostgreSQL"]
+```
+
 ### Start All Services
 
 ```bash
@@ -488,7 +589,103 @@ If you need to change ports, update:
 
 ## Multi-Machine Deployment
 
-For production deployments across multiple machines:
+For production deployments across multiple machines, you can distribute components for better scalability and resilience.
+
+### Single Server Architecture
+
+All components on one machine (development/small production):
+
+```mermaid
+flowchart TB
+    subgraph server["Single Server"]
+        subgraph web["Web Layer"]
+            nginx["Nginx :80"]
+        end
+        
+        subgraph application["Application Layer"]
+            tomcat["Tomcat :8080\n(Alfresco + Share)"]
+            transform["Transform :8090"]
+            activemq["ActiveMQ :61616"]
+            solr["Solr :8983"]
+        end
+        
+        subgraph database["Data Layer"]
+            postgres[("PostgreSQL :5432")]
+            content[("alf_data")]
+        end
+        
+        nginx --> tomcat
+        tomcat <--> postgres
+        tomcat <--> content
+        tomcat <--> activemq
+        tomcat <--> solr
+        tomcat <--> transform
+        activemq <--> transform
+    end
+    
+    users["Users"] --> nginx
+```
+
+**Scripts to run:** All scripts (01-11) on the single server.
+
+### Multi-Server Architecture
+
+Distributed deployment for production (high availability):
+
+```mermaid
+flowchart TB
+    users["Users / Load Balancer"]
+    
+    subgraph web_tier["Web Server(s)"]
+        nginx1["Nginx :80\n+ Content App"]
+    end
+    
+    subgraph app_tier["Application Server(s)"]
+        subgraph app1["App Server 1"]
+            tomcat1["Tomcat :8080\n(Alfresco + Share)"]
+            transform1["Transform :8090"]
+        end
+    end
+    
+    subgraph mq_tier["Message Queue"]
+        activemq["ActiveMQ :61616\n:8161"]
+    end
+    
+    subgraph search_tier["Search Server(s)"]
+        solr["Solr :8983"]
+        solr_index[("Solr Index")]
+    end
+    
+    subgraph db_tier["Database Server"]
+        postgres[("PostgreSQL :5432")]
+    end
+    
+    subgraph storage["Shared Storage"]
+        nas[("NFS/SAN\nalf_data")]
+    end
+    
+    users --> nginx1
+    nginx1 --> tomcat1
+    tomcat1 <--> postgres
+    tomcat1 <--> nas
+    tomcat1 <--> activemq
+    tomcat1 <--> solr
+    tomcat1 <--> transform1
+    activemq <--> transform1
+    solr <--> solr_index
+```
+
+### Scripts by Server Role
+
+| Server Role | Scripts to Run | Configuration |
+|-------------|----------------|---------------|
+| **Database** | `01-install_postgres.sh` | Allow remote connections in pg_hba.conf |
+| **Application** | `02-06`, `08` | Set `ALFRESCO_DB_HOST`, `ACTIVEMQ_HOST`, `SOLR_HOST` |
+| **Search** | `02`, `07` | Set `ALFRESCO_HOST` for tracking |
+| **Message Queue** | `02`, `04` | Configure network binding |
+| **Web/Frontend** | `02`, `09`, `10` | Configure upstream servers in Nginx |
+
+### Configuration Steps
 
 1. **Edit `config/alfresco.env`** to set correct hostnames:
    ```bash
@@ -505,7 +702,45 @@ For production deployments across multiple machines:
 
 3. **Ensure network connectivity** between machines on required ports.
 
+### Network Requirements
+
+```mermaid
+flowchart LR
+    web["Web Server"] -->|":8080"| app["App Server"]
+    app -->|":5432"| db["Database"]
+    app -->|":61616"| mq["Message Queue"]
+    app -->|":8983"| search["Search Server"]
+    app -->|":8090"| transform["Transform*"]
+```
+
+*Transform service typically runs on the App Server but can be separated.
+
 ## Backup and Restore
+
+### Backup and Restore Flow
+
+```mermaid
+flowchart LR
+    subgraph backup_flow["Backup Process"]
+        stop1["Stop Services"] --> db_backup["Dump PostgreSQL"]
+        db_backup --> content_backup["Copy alf_data"]
+        content_backup --> config_backup["Copy Configs"]
+        config_backup --> solr_backup["Copy Solr Index"]
+        solr_backup --> compress["Compress Archive"]
+        compress --> start1["Start Services"]
+    end
+    
+    subgraph restore_flow["Restore Process"]
+        stop2["Stop Services"] --> extract["Extract Archive"]
+        extract --> db_restore["Restore Database"]
+        db_restore --> content_restore["Restore alf_data"]
+        content_restore --> config_restore["Restore Configs"]
+        config_restore --> solr_restore["Restore Solr"]
+        solr_restore --> start2["Start Services"]
+    end
+    
+    backup_flow -->|"backup.tar.gz"| restore_flow
+```
 
 ### Creating Backups
 
