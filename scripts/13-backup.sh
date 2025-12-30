@@ -265,34 +265,66 @@ backup_database() {
     log_step "Backing up PostgreSQL database..."
     
     local db_backup_file="${BACKUP_DIR}/database_${ALFRESCO_DB_NAME}.sql"
+    local pg_was_stopped="false"
+    
+    # Create a temporary directory for postgres user to write to
+    local pg_temp_dir="/tmp/alfresco_backup_$$"
+    mkdir -p "$pg_temp_dir"
+    chmod 777 "$pg_temp_dir"
     
     # Check if PostgreSQL is accessible
     if ! sudo -u postgres pg_isready -q 2>/dev/null; then
         # Try to check if it's running but we can connect differently
         if ! systemctl is-active --quiet postgresql 2>/dev/null; then
-            log_error "PostgreSQL is not running. Cannot backup database."
-            log_error "Start PostgreSQL or skip database backup with --type content"
-            exit 1
+            log_warn "PostgreSQL is not running."
+            log_info "Temporarily starting PostgreSQL for database backup..."
+            
+            if sudo systemctl start postgresql; then
+                pg_was_stopped="true"
+                # Wait for PostgreSQL to be ready
+                local attempts=0
+                while ! sudo -u postgres pg_isready -q 2>/dev/null; do
+                    ((attempts++))
+                    if [ $attempts -ge 30 ]; then
+                        log_error "PostgreSQL failed to start within 30 seconds"
+                        rm -rf "$pg_temp_dir"
+                        exit 1
+                    fi
+                    sleep 1
+                done
+                log_info "PostgreSQL started successfully"
+            else
+                log_error "Failed to start PostgreSQL. Cannot backup database."
+                log_error "Start PostgreSQL manually or skip database backup with --type content"
+                rm -rf "$pg_temp_dir"
+                exit 1
+            fi
         fi
     fi
     
     log_info "Dumping database: $ALFRESCO_DB_NAME"
     
-    # Perform database dump
+    # Perform database dump to temp directory (postgres user can write there)
+    local temp_dump="${pg_temp_dir}/database_${ALFRESCO_DB_NAME}.sql"
+    
     if sudo -u postgres pg_dump \
         --verbose \
         --format=custom \
-        --file="${db_backup_file}.dump" \
+        --file="${temp_dump}.dump" \
         "$ALFRESCO_DB_NAME" 2>"${BACKUP_DIR}/database_backup.log"; then
         
-        log_info "Database dump completed: ${db_backup_file}.dump"
+        log_info "Database dump completed"
         
         # Also create a plain SQL backup for portability
         log_info "Creating plain SQL backup..."
         sudo -u postgres pg_dump \
             --format=plain \
-            --file="$db_backup_file" \
+            --file="$temp_dump" \
             "$ALFRESCO_DB_NAME" 2>>"${BACKUP_DIR}/database_backup.log"
+        
+        # Move dumps to backup directory
+        mv "${temp_dump}.dump" "${db_backup_file}.dump"
+        mv "$temp_dump" "$db_backup_file"
         
         # Get database size
         local db_size
@@ -308,7 +340,22 @@ backup_database() {
         } >> "$BACKUP_MANIFEST"
     else
         log_error "Database backup failed. Check ${BACKUP_DIR}/database_backup.log"
+        # Stop PostgreSQL if we started it
+        if [ "$pg_was_stopped" = "true" ]; then
+            log_info "Stopping PostgreSQL (was started for backup)..."
+            sudo systemctl stop postgresql
+        fi
+        rm -rf "$pg_temp_dir"
         exit 1
+    fi
+    
+    # Cleanup temp directory
+    rm -rf "$pg_temp_dir"
+    
+    # Stop PostgreSQL if we started it for the backup
+    if [ "$pg_was_stopped" = "true" ]; then
+        log_info "Stopping PostgreSQL (was started for backup)..."
+        sudo systemctl stop postgresql
     fi
 }
 
