@@ -37,7 +37,7 @@ main() {
     
     # Pre-flight checks
     load_config
-    check_prerequisites curl
+    check_prerequisites curl zip
     
     # Determine versions
     determine_versions
