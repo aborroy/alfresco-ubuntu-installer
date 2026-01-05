@@ -641,7 +641,7 @@ flowchart TB
     end
     
     subgraph mq_tier["Message Queue"]
-        activemq["ActiveMQ :61616\n:8161"]
+        activemq["ActiveMQ :61616 :8161"]
     end
     
     subgraph search_tier["Search Server(s)"]
@@ -654,7 +654,7 @@ flowchart TB
     end
     
     subgraph storage["Shared Storage"]
-        nas[("NFS/SAN\nalf_data")]
+        nas[("NFS/SAN alf_data")]
     end
     
     users --> nginx1
