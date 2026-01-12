@@ -581,7 +581,7 @@ tail -f /var/log/nginx/alfresco_error.log
    source config/alfresco.env
    curl -u "${ACTIVEMQ_ADMIN_USER}:${ACTIVEMQ_ADMIN_PASSWORD}" \
    http://localhost:8161/admin/
-  ```
+   ```
 
 ### Port Conflicts
 
