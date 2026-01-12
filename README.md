@@ -539,8 +539,8 @@ tail -f /var/log/nginx/alfresco_error.log
 
 2. **Verify database connection**:
    ```bash
-   PGPASSWORD=$(grep ALFRESCO_DB_PASSWORD config/alfresco.env | cut -d= -f2) \
-     psql -h localhost -U alfresco -d alfresco -c "SELECT 1"
+   source config/alfresco.env
+   PGPASSWORD="${ALFRESCO_DB_PASSWORD}" psql -h localhost -U alfresco -d alfresco -c "SELECT 1"
    ```
 
 3. **Check memory**:
@@ -552,8 +552,9 @@ tail -f /var/log/nginx/alfresco_error.log
 
 1. **Check Solr is running**:
    ```bash
-   curl -H "X-Alfresco-Search-Secret: $(grep SOLR_SHARED_SECRET config/alfresco.env | cut -d= -f2)" \
-     http://localhost:8983/solr/alfresco/admin/ping
+   source config/alfresco.env
+   curl -H "X-Alfresco-Search-Secret: ${SOLR_SHARED_SECRET}" \
+   http://localhost:8983/solr/alfresco/admin/ping
    ```
 
 2. **Verify shared secret matches** in both:
@@ -571,6 +572,16 @@ tail -f /var/log/nginx/alfresco_error.log
    ```bash
    soffice --version
    ```
+
+### ActiveMQ Errors
+
+1. **Verify if ActiveMQ is running**
+
+   ```bash
+   source config/alfresco.env
+   curl -u "${ACTIVEMQ_ADMIN_USER}:${ACTIVEMQ_ADMIN_PASSWORD}" \
+   http://localhost:8161/admin/
+  ```
 
 ### Port Conflicts
 
