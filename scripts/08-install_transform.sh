@@ -23,6 +23,8 @@
 #   bash scripts/08-install_transform.sh
 # =============================================================================
 
+set -euo pipefail
+
 # Load common functions and configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
@@ -35,44 +37,132 @@ DOWNLOAD_DIR="${SCRIPT_DIR}/../downloads"
 NEXUS_BASE_URL="https://nexus.alfresco.com/nexus"
 
 # -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+resolve_libreoffice_home() {
+    # Prefer the canonical location on Ubuntu
+    if [ -d "/usr/lib/libreoffice" ] && [ -x "/usr/lib/libreoffice/program/soffice" ]; then
+        echo "/usr/lib/libreoffice"
+        return 0
+    fi
+
+    # Fall back to resolving the actual soffice target
+    if command -v soffice >/dev/null 2>&1; then
+        local soffice_path
+        soffice_path="$(readlink -f "$(command -v soffice)" 2>/dev/null || true)"
+        if [ -n "${soffice_path}" ]; then
+            # Typically .../program/soffice
+            local dir
+            dir="$(dirname "${soffice_path}")"
+            # Strip trailing /program if present
+            dir="${dir%/program}"
+            # If the resolved dir looks like a LibreOffice home, accept it
+            if [ -d "${dir}" ]; then
+                echo "${dir}"
+                return 0
+            fi
+        fi
+    fi
+
+    # Last resort
+    echo "/usr/lib/libreoffice"
+}
+
+ensure_clean_libreoffice_install() {
+    log_step "Ensuring a clean LibreOffice installation (desktop images may break headless conversions)..."
+
+    # Stop Transform service if present (avoid running soffice during purge)
+    if systemctl list-unit-files 2>/dev/null | awk '{print $1}' | grep -qx "transform.service"; then
+        sudo systemctl stop transform 2>/dev/null || true
+    fi
+
+    # Stop any running LibreOffice processes (best-effort)
+    sudo pkill -f soffice.bin 2>/dev/null || true
+
+    # Remove Snap LibreOffice if present
+    if command -v snap >/dev/null 2>&1; then
+        if snap list 2>/dev/null | awk '{print $1}' | grep -qx "libreoffice"; then
+            log_info "Removing Snap LibreOffice..."
+            sudo snap remove libreoffice || true
+        fi
+    fi
+
+    # Purge APT LibreOffice packages if any (avoid mixed installs)
+    if dpkg -l 2>/dev/null | awk '{print $2}' | grep -qE '^libreoffice'; then
+        log_info "Purging APT LibreOffice packages..."
+        sudo apt-get remove --purge -y 'libreoffice*' || true
+        sudo apt-get autoremove -y || true
+        sudo apt-get autoclean -y || true
+    fi
+
+    # Install a minimal, deterministic LibreOffice set for headless conversions
+    log_info "Installing LibreOffice (APT, minimal headless set)..."
+    sudo apt-get update
+    sudo apt-get install -y \
+        libreoffice-core \
+        libreoffice-writer \
+        libreoffice-calc \
+        fonts-dejavu \
+        fonts-liberation
+
+    # Sanity check
+    if ! command -v soffice >/dev/null 2>&1; then
+        log_error "LibreOffice installation failed: soffice not found"
+        exit 1
+    fi
+
+    log_info "LibreOffice installed: $(soffice --version 2>/dev/null | head -1 || echo 'unknown')"
+    log_info "LibreOffice binary: $(readlink -f "$(command -v soffice)" 2>/dev/null || command -v soffice)"
+}
+
+prepare_libreoffice_runtime_dirs() {
+    # Keep LibreOffice runtime state deterministic for systemd services
+    # and avoid ~/.cache / dconf surprises on desktop images.
+    local lo_home="/var/lib/alfresco"
+    sudo mkdir -p "${lo_home}/.config" "${lo_home}/.cache"
+    sudo chown -R "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "${lo_home}"
+    sudo chmod -R 700 "${lo_home}"
+}
+
+# -----------------------------------------------------------------------------
 # Main Installation
 # -----------------------------------------------------------------------------
 main() {
     log_step "Starting Alfresco Transform Service installation..."
-    
+
     # Pre-flight checks
     check_root
     check_sudo
     load_config
     check_prerequisites curl tar
-    
+
     # Detect architecture
     detect_architecture
-    
+
     # Verify prerequisites
     verify_prerequisites
-    
+
     # Install system dependencies
     install_dependencies
-    
+
     # Install PDF Renderer
     install_pdf_renderer
-    
+
     # Install Transform Core
     install_transform_core
-    
+
     # Create systemd service
     create_systemd_service
-    
+
     # Set permissions
     set_permissions
-    
+
     # Enable service
     enable_service
-    
+
     # Verify installation
     verify_installation
-    
+
     log_info "Alfresco Transform Service installation completed successfully!"
 }
 
@@ -81,9 +171,9 @@ main() {
 # -----------------------------------------------------------------------------
 detect_architecture() {
     log_step "Detecting system architecture..."
-    
+
     ARCH=$(dpkg --print-architecture)
-    
+
     case "$ARCH" in
         amd64)
             JAVA_ARCH="amd64"
@@ -98,15 +188,15 @@ detect_architecture() {
             exit 1
             ;;
     esac
-    
+
     JAVA_HOME_PATH="/usr/lib/jvm/java-${JAVA_VERSION}-openjdk-${JAVA_ARCH}"
-    
+
     if [ ! -d "$JAVA_HOME_PATH" ]; then
         log_error "JAVA_HOME not found: $JAVA_HOME_PATH"
         log_error "Please run 02-install_java.sh first"
         exit 1
     fi
-    
+
     log_info "Using JAVA_HOME: $JAVA_HOME_PATH"
 }
 
@@ -115,13 +205,13 @@ detect_architecture() {
 # -----------------------------------------------------------------------------
 verify_prerequisites() {
     log_step "Verifying prerequisites..."
-    
+
     local errors=0
-    
+
     # Check transform JAR exists
     local transform_jar
     transform_jar=$(find "$DOWNLOAD_DIR" -name "alfresco-transform-core-aio-*.jar" 2>/dev/null | head -1)
-    
+
     if [ -z "$transform_jar" ] || [ ! -f "$transform_jar" ]; then
         log_error "Transform Core JAR not found in $DOWNLOAD_DIR"
         log_error "Please run 05-download_alfresco_resources.sh first"
@@ -129,12 +219,12 @@ verify_prerequisites() {
     else
         log_info "Found: $(basename "$transform_jar")"
     fi
-    
+
     if [ $errors -gt 0 ]; then
         log_error "Prerequisites check failed"
         exit 1
     fi
-    
+
     log_info "All prerequisites verified"
 }
 
@@ -143,11 +233,11 @@ verify_prerequisites() {
 # -----------------------------------------------------------------------------
 install_dependencies() {
     log_step "Installing Transform dependencies..."
-    
+
     # Update package list
     log_info "Updating package list..."
     sudo apt-get update
-    
+
     # ImageMagick for image transformations
     if command -v convert &> /dev/null; then
         log_info "ImageMagick is already installed"
@@ -155,15 +245,10 @@ install_dependencies() {
         log_info "Installing ImageMagick..."
         sudo apt-get install -y imagemagick
     fi
-    
-    # LibreOffice for document transformations
-    if command -v soffice &> /dev/null; then
-        log_info "LibreOffice is already installed"
-    else
-        log_info "Installing LibreOffice (this may take a while)..."
-        sudo apt-get install -y libreoffice
-    fi
-    
+
+    # LibreOffice for document transformations (force deterministic install)
+    ensure_clean_libreoffice_install
+
     # ExifTool for metadata extraction
     if command -v exiftool &> /dev/null; then
         log_info "ExifTool is already installed"
@@ -171,7 +256,7 @@ install_dependencies() {
         log_info "Installing ExifTool..."
         sudo apt-get install -y libimage-exiftool-perl
     fi
-    
+
     # Display installed versions
     log_info "Installed dependencies:"
     log_info "  ImageMagick: $(convert -version 2>/dev/null | head -1 | grep -oP 'ImageMagick \S+' || echo 'unknown')"
@@ -184,53 +269,53 @@ install_dependencies() {
 # -----------------------------------------------------------------------------
 install_pdf_renderer() {
     log_step "Installing Alfresco PDF Renderer..."
-    
+
     # Check if already installed
     if command -v alfresco-pdf-renderer &> /dev/null; then
         log_info "Alfresco PDF Renderer is already installed"
         log_info "  Version: $(alfresco-pdf-renderer --version 2>&1 | head -1 || echo 'unknown')"
         return 0
     fi
-    
+
     # Determine version to use
     local pdf_renderer_version
-    
+
     if [ "${USE_LATEST_VERSIONS:-false}" = "true" ]; then
         log_info "Fetching latest PDF Renderer version..."
         pdf_renderer_version=$(curl -s "${NEXUS_BASE_URL}/service/rest/repository/browse/releases/org/alfresco/alfresco-pdf-renderer/" \
-            | sed -n 's/.*<a href="\(.*\)\/">.*/\1/p' \
+            | sed -n 's/.*<a href="\([^"]*\)\/">.*/\1/p' \
             | grep -E '^[0-9]+(\.[0-9]+)*$' \
             | sort -V \
             | tail -n 1)
     fi
-    
+
     # Fall back to pinned version
     pdf_renderer_version="${pdf_renderer_version:-$ALFRESCO_PDF_RENDERER_VERSION}"
-    
+
     log_info "Using PDF Renderer version: $pdf_renderer_version"
-    
+
     # Download
     local download_url="${NEXUS_BASE_URL}/repository/releases/org/alfresco/alfresco-pdf-renderer/${pdf_renderer_version}/alfresco-pdf-renderer-${pdf_renderer_version}-${PDF_RENDERER_ARCH}.tgz"
     local download_file="/tmp/alfresco-pdf-renderer-${pdf_renderer_version}-${PDF_RENDERER_ARCH}.tgz"
-    
+
     log_info "Downloading from: $download_url"
-    
+
     if ! curl -L -o "$download_file" "$download_url"; then
         log_error "Failed to download PDF Renderer"
         exit 1
     fi
-    
+
     # Extract to /usr/bin
     log_info "Installing PDF Renderer to /usr/bin..."
     sudo tar xf "$download_file" -C /usr/bin
-    
+
     # Verify installation
     if command -v alfresco-pdf-renderer &> /dev/null; then
         log_info "PDF Renderer installed successfully"
     else
         log_warn "PDF Renderer may not be in PATH"
     fi
-    
+
     # Cleanup
     rm -f "$download_file"
 }
@@ -240,16 +325,16 @@ install_pdf_renderer() {
 # -----------------------------------------------------------------------------
 install_transform_core() {
     log_step "Installing Alfresco Transform Core..."
-    
+
     local transform_home="${ALFRESCO_HOME}/transform"
     local transform_jar
     transform_jar=$(find "$DOWNLOAD_DIR" -name "alfresco-transform-core-aio-*.jar" | head -1)
     local jar_filename
     jar_filename=$(basename "$transform_jar")
-    
+
     # Create transform directory
     mkdir -p "$transform_home"
-    
+
     # Copy JAR if not already present
     if [ -f "$transform_home/$jar_filename" ]; then
         log_info "Transform Core JAR already installed: $jar_filename"
@@ -257,14 +342,13 @@ install_transform_core() {
         log_info "Copying $jar_filename..."
         cp "$transform_jar" "$transform_home/"
     fi
-    
+
     # Create symlink for version-independent reference
-    # This is the key fix - we use a symlink so the systemd service doesn't need updating
     local symlink_name="alfresco-transform-core-aio.jar"
-    
+
     log_info "Creating symlink: $symlink_name -> $jar_filename"
     ln -sf "$jar_filename" "$transform_home/$symlink_name"
-    
+
     log_info "Transform Core installed to: $transform_home"
 }
 
@@ -273,30 +357,28 @@ install_transform_core() {
 # -----------------------------------------------------------------------------
 create_systemd_service() {
     log_step "Creating Transform systemd service..."
-    
+
     local service_file="/etc/systemd/system/transform.service"
     local transform_home="${ALFRESCO_HOME}/transform"
     local transform_jar="$transform_home/alfresco-transform-core-aio.jar"
-    
+
     # Calculate memory allocation
     calculate_memory_allocation
-    
+
     # Find LibreOffice home
-    local libreoffice_home="/usr/lib/libreoffice"
-    if [ ! -d "$libreoffice_home" ]; then
-        libreoffice_home=$(dirname "$(which soffice 2>/dev/null)" 2>/dev/null | sed 's|/program$||')
-    fi
-    
+    local libreoffice_home
+    libreoffice_home="$(resolve_libreoffice_home)"
+
     # Check if service already exists
     if [ -f "$service_file" ]; then
         log_info "Transform service file already exists, updating..."
         backup_file "$service_file"
     fi
-    
+
     # Calculate min heap (50% of max)
     local transform_xms=$((MEM_TRANSFORM / 2))
     [ $transform_xms -lt 256 ] && transform_xms=256
-    
+
     cat << EOF | sudo tee "$service_file" > /dev/null
 [Unit]
 Description=Alfresco Transform Core (All-In-One)
@@ -312,6 +394,11 @@ Group=${ALFRESCO_GROUP}
 # Java and application environment
 Environment="JAVA_HOME=${JAVA_HOME_PATH}"
 Environment="LIBREOFFICE_HOME=${libreoffice_home}"
+
+# LibreOffice runtime (avoid desktop profile/cache issues)
+Environment="HOME=/var/lib/alfresco"
+Environment="XDG_CONFIG_HOME=/var/lib/alfresco/.config"
+Environment="XDG_CACHE_HOME=/var/lib/alfresco/.cache"
 
 # Transform service configuration
 Environment="TRANSFORM_PORT=${TRANSFORM_PORT}"
@@ -352,11 +439,11 @@ EOF
 
     # Set permissions
     sudo chmod 644 "$service_file"
-    
+
     # Reload systemd
     log_info "Reloading systemd daemon..."
     sudo systemctl daemon-reload
-    
+
     log_info "Systemd service created with heap: ${transform_xms}m - ${MEM_TRANSFORM}m"
 }
 
@@ -365,16 +452,19 @@ EOF
 # -----------------------------------------------------------------------------
 set_permissions() {
     log_step "Setting file permissions..."
-    
+
     local transform_home="${ALFRESCO_HOME}/transform"
-    
+
     # Set ownership
     sudo chown -R "${ALFRESCO_USER}:${ALFRESCO_GROUP}" "$transform_home"
-    
+
     # Set permissions
     chmod 755 "$transform_home"
     chmod 644 "$transform_home"/*.jar
-    
+
+    # LibreOffice runtime dirs for the service user (HOME=/var/lib/alfresco)
+    prepare_libreoffice_runtime_dirs
+
     log_info "Permissions configured"
 }
 
@@ -383,9 +473,9 @@ set_permissions() {
 # -----------------------------------------------------------------------------
 enable_service() {
     log_step "Enabling Transform service..."
-    
+
     sudo systemctl enable transform
-    
+
     log_info "Transform service enabled on boot"
 }
 
@@ -394,10 +484,10 @@ enable_service() {
 # -----------------------------------------------------------------------------
 verify_installation() {
     log_step "Verifying Transform installation..."
-    
+
     local transform_home="${ALFRESCO_HOME}/transform"
     local errors=0
-    
+
     # Check directory exists
     if [ -d "$transform_home" ]; then
         log_info "Transform directory exists: $transform_home"
@@ -405,11 +495,11 @@ verify_installation() {
         log_error "Transform directory not found: $transform_home"
         ((errors++))
     fi
-    
+
     # Check JAR exists (via symlink)
     if [ -f "$transform_home/alfresco-transform-core-aio.jar" ]; then
         log_info "Transform Core JAR exists (via symlink)"
-        
+
         # Show what the symlink points to
         local real_jar
         real_jar=$(readlink -f "$transform_home/alfresco-transform-core-aio.jar")
@@ -418,7 +508,7 @@ verify_installation() {
         log_error "Transform Core JAR not found"
         ((errors++))
     fi
-    
+
     # Check dependencies
     local deps=(
         "convert:ImageMagick"
@@ -426,11 +516,11 @@ verify_installation() {
         "exiftool:ExifTool"
         "alfresco-pdf-renderer:PDF Renderer"
     )
-    
+
     for dep in "${deps[@]}"; do
         local cmd="${dep%%:*}"
         local name="${dep##*:}"
-        
+
         if command -v "$cmd" &> /dev/null; then
             log_info "$name is available"
         else
@@ -438,7 +528,7 @@ verify_installation() {
             ((errors++))
         fi
     done
-    
+
     # Check service file
     if [ -f "/etc/systemd/system/transform.service" ]; then
         log_info "Systemd service file exists"
@@ -446,7 +536,7 @@ verify_installation() {
         log_error "Systemd service file missing"
         ((errors++))
     fi
-    
+
     # Check service is enabled
     if systemctl is-enabled --quiet transform 2>/dev/null; then
         log_info "Transform service is enabled"
@@ -454,12 +544,12 @@ verify_installation() {
         log_error "Transform service is not enabled"
         ((errors++))
     fi
-    
+
     if [ $errors -gt 0 ]; then
         log_error "Verification failed with $errors error(s)"
         exit 1
     fi
-    
+
     log_info ""
     log_info "Transform Service installation summary:"
     log_info "  Transform Home: $transform_home"
