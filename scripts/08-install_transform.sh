@@ -323,6 +323,12 @@ ExecStart=${JAVA_HOME_PATH}/bin/java \\
     -Xms${transform_xms}m -Xmx${MEM_TRANSFORM}m \\
     -XX:+UseG1GC \\
     -DLIBREOFFICE_HOME=${libreoffice_home} \\
+    -Dorg.jodconverter.local.manager.process.ProcessManager=org.jodconverter.process.PureJavaProcessManager \\
+    -Dorg.jodconverter.local.manager.officeHome=${libreoffice_home} \\
+    -Dorg.jodconverter.local.manager.maxTasksPerProcess=1 \\
+    -Dorg.jodconverter.local.manager.timeout=120000 \\
+    -Dorg.jodconverter.local.manager.taskExecutionTimeout=120000 \\
+    -Dorg.jodconverter.local.manager.arguments="--headless --nologo --nodefault --nofirststartwizard --norestore --nolockcheck" \\
     -Dpdfrenderer.exe=/usr/bin/alfresco-pdf-renderer \\
     -jar ${transform_jar} \\
     --server.port=${TRANSFORM_PORT}

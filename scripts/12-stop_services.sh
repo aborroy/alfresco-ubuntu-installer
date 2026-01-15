@@ -261,7 +261,7 @@ display_summary() {
     
     echo ""
     echo "┌─────────────────────────────────────────────────────────────┐"
-    echo "│                    SERVICE STATUS                          │"
+    echo "│                    SERVICE STATUS                           │"
     echo "├────────────────────┬────────────────────────────────────────┤"
     
     # Define service order for display (reverse of startup)

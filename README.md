@@ -400,6 +400,7 @@ $ bash scripts/11-start_services.sh
 - **Home**: `/home/ubuntu/transform`
 - **Port**: 8090
 - **Dependencies**: ImageMagick, LibreOffice, ExifTool
+- **Logs**: `journalctl -u transform.service -o cat --no-pager` 
 
 ### 9. Alfresco Content App
 
@@ -526,6 +527,9 @@ tail -f /home/ubuntu/alfresco-search-services/logs/solr.log
 # Nginx logs
 tail -f /var/log/nginx/alfresco_access.log
 tail -f /var/log/nginx/alfresco_error.log
+
+# Transform logs
+journalctl -u transform.service -o cat --no-pager
 ```
 
 ## Troubleshooting
