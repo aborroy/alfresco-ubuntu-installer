@@ -660,13 +660,13 @@ Expected response: `{"status":"OK"}`
 Verify message queues are active and processing.
 
 1. Open http://localhost:8161/
-2. Click "Manage ActiveMQ broker"
-3. Login with credentials from `config/alfresco.env`:
+2. Login with credentials from `config/alfresco.env`:
    ```bash
    source config/alfresco.env
    echo "User: ${ACTIVEMQ_ADMIN_USER}"
    echo "Password: ${ACTIVEMQ_ADMIN_PASSWORD}"
    ```
+3. Click "Manage ActiveMQ broker"
 4. Navigate to "Queues" tab
 5. Look for Alfresco-related queues (e.g., `alfresco.transform.request`)
 
