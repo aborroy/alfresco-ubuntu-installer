@@ -21,7 +21,7 @@ Automated installation scripts for deploying **Alfresco Content Services Communi
 * [Backup and Restore](#backup-and-restore)
 * [Security Considerations](#security-considerations)
 
---
+---
 
 ## Overview
 
