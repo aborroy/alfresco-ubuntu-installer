@@ -4,6 +4,25 @@
 
 Automated installation scripts for deploying **Alfresco Content Services Community Edition** on Ubuntu using ZIP distribution files.
 
+## Table of Contents
+
+* [Overview](#overview)
+* [Deployment Options](#deployment-options)
+* [Prerequisites](#prerequisites)
+* [Quick Start](#quick-start)
+* [Project Structure](#project-structure)
+* [Configuration](#configuration)
+* [Memory Management](#memory-management)
+* [Component Details](#component-details)
+* [Service Management](#service-management)
+* [Verifying Services](#verifying-services)
+* [Troubleshooting](#troubleshooting)
+* [Multi-Machine Deployment](#multi-machine-deployment)
+* [Backup and Restore](#backup-and-restore)
+* [Security Considerations](#security-considerations)
+
+--
+
 ## Overview
 
 This project provides a collection of bash scripts to automate the installation and configuration of Alfresco Content Services on Ubuntu 22.04/24.04 LTS.
@@ -531,6 +550,132 @@ tail -f /var/log/nginx/alfresco_error.log
 # Transform logs
 journalctl -u transform.service -o cat --no-pager
 ```
+
+## Verifying Services
+
+After installation, verify each component is working correctly through browser-based tests.
+
+### Verification Checklist
+
+| Service | Test | Expected Result |
+|---------|------|-----------------|
+| PostgreSQL | Query database tables | Alfresco schema exists |
+| Repository | Login to Share/ACA | Dashboard loads successfully |
+| Transform | Upload Office document | PDF preview renders |
+| Solr | Search for content | Results appear within seconds |
+| ActiveMQ | Check queue activity | Messages processed without errors |
+
+### 1. PostgreSQL Database
+
+PostgreSQL stores all Alfresco metadata, user information, and content references.
+
+Verify the database is accessible and contains Alfresco tables.
+
+```bash
+source config/alfresco.env
+PGPASSWORD="${ALFRESCO_DB_PASSWORD}" psql -h localhost -U alfresco -d alfresco -c "\dt alf_*"
+```
+
+Success indicators
+
+- Command returns a list of tables starting with `alf_` (e.g., `alf_node`, `alf_content_url`, `alf_transaction`)
+- No connection errors occur
+
+Check node count to verify Alfresco is storing content:
+
+```bash
+source config/alfresco.env
+PGPASSWORD="${ALFRESCO_DB_PASSWORD}" psql -h localhost -U alfresco -d alfresco -c "SELECT COUNT(*) FROM alf_node;"
+```
+
+*A fresh installation typically shows several thousand nodes (system content and default users)*
+
+### 2. Repository and Authentication
+
+Access Alfresco Share or Content App and login.
+
+1. Open http://localhost/share/ or http://localhost/
+2. Login with `admin` / `admin`
+3. Verify the dashboard loads without errors
+
+Success indicators
+
+- User dashboard displays correctly
+- No connection errors in the browser console
+- Navigation between pages works smoothly
+
+### 3. Transform Service
+
+The Transform Service converts documents to different formats, enabling PDF previews and thumbnails.
+
+Upload an Office document and verify PDF preview generation.
+
+1. Login to Share (http://localhost/share/)
+2. Navigate to a folder (e.g., `Shared Files`)
+3. Upload a `.docx`, `.xlsx`, or `.pptx` file
+4. Click on the uploaded document
+5. Wait a few seconds for the preview to generate
+
+Success indicators
+
+- PDF preview renders in the document viewer
+- Thumbnail appears in the document library
+- No transformation error messages appear
+
+If preview fails, check Transform Service logs:
+```bash
+journalctl -u transform.service -o cat --no-pager | tail -50
+```
+
+### 4. Search Service (Solr)
+
+Create content and verify search returns results.
+
+1. Login to Share or ACA
+2. Create a new text file with unique content (e.g., "UniqueTestPhrase12345")
+3. Wait 30-60 seconds for indexing to complete
+4. Use the search box to search for your unique phrase
+5. Verify the document appears in search results
+
+Success indicators
+
+- Search results include your newly created document
+- Search suggestions appear as you type
+- Advanced search filters work correctly
+
+Check indexing status via Solr Admin
+
+1. Open http://localhost:8983/solr/ (requires shared secret header and an extension like [FlexHeaders](https://addons.mozilla.org/en-US/firefox/addon/flexheaders-alter-http-headers) for Firefox)
+2. Or use curl:
+   ```bash
+   source config/alfresco.env
+   curl -H "X-Alfresco-Search-Secret: ${SOLR_SHARED_SECRET}" \
+        "http://localhost:8983/solr/alfresco/admin/ping"
+   ```
+
+Expected response: `{"status":"OK"}`
+
+### 5. ActiveMQ Message Broker
+
+Verify message queues are active and processing.
+
+1. Open http://localhost:8161/
+2. Click "Manage ActiveMQ broker"
+3. Login with credentials from `config/alfresco.env`:
+   ```bash
+   source config/alfresco.env
+   echo "User: ${ACTIVEMQ_ADMIN_USER}"
+   echo "Password: ${ACTIVEMQ_ADMIN_PASSWORD}"
+   ```
+4. Navigate to "Queues" tab
+5. Look for Alfresco-related queues (e.g., `alfresco.transform.request`)
+
+Success indicators
+
+- Queues are listed and active
+- "Messages Enqueued" counter increases when uploading documents
+- "Messages Dequeued" counter shows messages are being processed
+- No messages stuck in "Pending" state for extended periods
 
 ## Troubleshooting
 
