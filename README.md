@@ -19,6 +19,7 @@ Automated installation scripts for deploying **Alfresco Content Services Communi
 * [Troubleshooting](#troubleshooting)
 * [Multi-Machine Deployment](#multi-machine-deployment)
 * [Backup and Restore](#backup-and-restore)
+* [Installing Add-ons](#installing-add-ons)
 * [Security Considerations](#security-considerations)
 
 ---
@@ -200,10 +201,12 @@ alfresco-ubuntu-installer/
 │   ├── 11-start_services.sh     # Start all services
 │   ├── 12-stop_services.sh      # Stop all services
 │   ├── 13-backup.sh             # Backup Alfresco data
-│   └── 14-restore.sh            # Restore from backup
+│   ├── 14-restore.sh            # Restore from backup
+│   └── 15-install_addons.sh     # Install add-ons (AMPs/JARs)
 ├── downloads/                   # Downloaded artifacts (gitignored)
 ├── .github/workflows/
 │   └── ci.yml                   # CI/CD pipeline
+├── ADDONS.md                    # Add-on installation guide
 └── README.md
 ```
 
@@ -1025,6 +1028,44 @@ bash scripts/11-start_services.sh
 # Verify Alfresco is accessible
 curl http://localhost/alfresco/api/-default-/public/alfresco/versions/1/probes/-ready-
 ```
+
+## Installing Add-ons
+
+Alfresco supports extensions through AMP (Alfresco Module Package) and JAR modules. Use the `15-install_addons.sh` script to install add-ons after the base installation is complete.
+
+### Quick Examples
+
+```bash
+# Stop services before installing add-ons
+bash scripts/12-stop_services.sh
+
+# Install an AMP add-on (e.g., OOTBee Support Tools from Maven Central)
+bash scripts/15-install_addons.sh \
+    --url https://repo1.maven.org/maven2/org/orderofthebee/support-tools/support-tools-repo/1.2.3.0/support-tools-repo-1.2.3.0-amp.amp \
+    --target repo
+
+# Install a JAR add-on (e.g., Script Root Object from GitHub)
+bash scripts/15-install_addons.sh \
+    --url https://github.com/aborroy/alfresco-script-root-object/releases/download/2.0.0/alfresco-script-root-object-2.0.0.jar \
+    --target repo
+
+# List installed add-ons
+bash scripts/15-install_addons.sh --list
+
+# Start services
+bash scripts/11-start_services.sh
+```
+
+### Add-on Types
+
+| Type | Target | Installation Path |
+|------|--------|-------------------|
+| **AMP** (platform) | `--target repo` | Applied to `alfresco.war` via MMT |
+| **AMP** (Share) | `--target share` | Applied to `share.war` via MMT |
+| **JAR** (platform) | `--target repo` | `${ALFRESCO_HOME}/modules/platform/` |
+| **JAR** (Share) | `--target share` | `${ALFRESCO_HOME}/modules/share/` |
+
+For detailed instructions, examples, and troubleshooting, see **[ADDONS.md](ADDONS.md)**.
 
 ## Security Considerations
 
