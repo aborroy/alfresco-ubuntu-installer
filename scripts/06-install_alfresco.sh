@@ -414,6 +414,14 @@ authentication.chain=alfrescoNtlm1:alfrescoNtlm
 # Session timeout (in seconds) - 1 hour
 server.session.timeout=3600
 
+# Password encoding - bcrypt10 is more secure than default md4
+# After first login, passwords are automatically rehashed to bcrypt10
+system.preferred.password.encoding=bcrypt10
+
+# Initial admin password (MD4 hash, only applied on fresh installation)
+# Once the repository is initialized, this setting has no effect
+alfresco_user_store.adminpassword=${ALFRESCO_ADMIN_PASSWORD_HASH}
+
 # -----------------------------------------------------------------------------
 # Performance Tuning
 # -----------------------------------------------------------------------------

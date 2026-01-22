@@ -54,6 +54,23 @@ generate_hex_secret() {
     openssl rand -hex "$length"
 }
 
+# Generate MD4 hash for Alfresco admin password
+# Alfresco uses MD4 with UTF-16LE encoding for initial admin password
+# Note: MD4 is deprecated in OpenSSL 3.x, so we use the legacy provider
+generate_md4_hash() {
+    local password=$1
+    # Try with legacy provider first (OpenSSL 3.x), fallback to standard (OpenSSL 1.x)
+    if printf '%s' "$password" | iconv -t utf-16le | openssl md4 -provider legacy -provider default 2>/dev/null | cut -d ' ' -f 2; then
+        return 0
+    elif printf '%s' "$password" | iconv -t utf-16le | openssl md4 2>/dev/null | cut -d ' ' -f 2; then
+        return 0
+    else
+        log_error "Failed to generate MD4 hash. OpenSSL legacy provider may not be available."
+        log_error "Using default admin password hash (admin/admin)"
+        echo "209c6174da490caeb422f3fa5a7ae634"
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # Profile Management
 # -----------------------------------------------------------------------------
@@ -185,10 +202,14 @@ main() {
     local db_password
     local solr_secret
     local activemq_password
+    local admin_password
+    local admin_password_hash
     
     db_password=$(generate_password 20)
     solr_secret=$(generate_hex_secret 32)
     activemq_password=$(generate_password 16)
+    admin_password=$(generate_password 12)
+    admin_password_hash=$(generate_md4_hash "$admin_password")
     
     # Detect current user and group
     local current_user
@@ -227,6 +248,15 @@ export ALFRESCO_DB_PORT="5432"
 export ALFRESCO_DB_NAME="alfresco"
 export ALFRESCO_DB_USER="alfresco"
 export ALFRESCO_DB_PASSWORD="${db_password}"
+
+# -----------------------------------------------------------------------------
+# Alfresco Admin User Configuration
+# -----------------------------------------------------------------------------
+# Admin password is set during initial repository bootstrap.
+# Once the repository is initialized, changing this will have no effect.
+# To change password after initialization, use the Alfresco UI or API.
+export ALFRESCO_ADMIN_PASSWORD="${admin_password}"
+export ALFRESCO_ADMIN_PASSWORD_HASH="${admin_password_hash}"
 
 # -----------------------------------------------------------------------------
 # Solr Configuration
@@ -311,10 +341,14 @@ EOF
     log_warn "IMPORTANT: Review and customize the configuration before installation:"
     log_info "  - Installation user: ${current_user}"
     log_info "  - Installation home: ${current_home}"
+    log_info "  - Admin password: (auto-generated, see config file)"
     log_info "  - Database password: (auto-generated)"
     log_info "  - Solr secret: (auto-generated)"
     log_info "  - Memory settings: TOMCAT_XMS/TOMCAT_XMX"
     log_info "  - Host settings: for multi-machine deployment"
+    log_info ""
+    log_warn "SECURITY: The admin password is only set during initial bootstrap."
+    log_warn "          Save it securely - you'll need it to log in!"
     log_info ""
     log_info "To view generated passwords:"
     log_info "  cat $CONFIG_FILE"
