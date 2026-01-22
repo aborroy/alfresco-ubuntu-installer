@@ -21,7 +21,6 @@ Automated installation scripts for deploying **Alfresco Content Services Communi
 * [Backup and Restore](#backup-and-restore)
 * [Installing Add-ons](#installing-add-ons)
 * [Security Considerations](#security-considerations)
-  * [Configuring HTTPS with TLS 1.3](#configuring-https-with-tls-13)
 
 ---
 
@@ -820,6 +819,146 @@ flowchart TB
 ```
 
 **Scripts to run:** All scripts (01-11) on the single server.
+
+### Two-Server Architecture: Dedicated PostgreSQL
+
+This is a common production pattern when you want to keep the deployment simple while isolating database I/O and memory.
+
+- **Server A (App)**: Nginx, Tomcat (Alfresco + Share), Transform, ActiveMQ, Solr, and `alf_data`
+- **Server B (DB)**: PostgreSQL only (16 GB RAM)
+
+```mermaid
+flowchart TB
+    users["Users"] --> nginx["Server A: Nginx :80 Content App"]
+    nginx --> tomcat["Server A: Tomcat :8080 (Alfresco + Share)"]
+
+    subgraph serverA["Server A (App)"]
+        tomcat
+        transform["Transform :8090"]
+        activemq["ActiveMQ :61616 :8161"]
+        solr["Solr :8983"]
+        content[("alf_data")]
+        tomcat <--> activemq
+        tomcat <--> solr
+        tomcat <--> transform
+        tomcat <--> content
+    end
+
+    subgraph serverB["Server B (DB, 16 GB RAM)"]
+        postgres[("PostgreSQL :5432")]
+    end
+
+    tomcat <--> postgres
+```
+
+#### Example values
+
+- Server A (App): `10.10.10.20`
+- Server B (DB): `10.10.10.30`
+- Alfresco database name: `alfresco`
+- Alfresco database user: `alfresco`
+
+#### Steps on Server B (DB)
+
+1. Run the PostgreSQL installer script:
+
+   ```bash
+   bash scripts/01-install_postgres.sh
+   ```
+
+2. Allow remote connections from Server A.
+
+   - In `postgresql.conf`, set:
+
+     - `listen_addresses = '*'`
+
+   - In `pg_hba.conf`, add a rule that allows Server A only:
+
+     ```conf
+     # Allow Alfresco from Server A only
+     host    alfresco    alfresco    10.10.10.20/32    scram-sha-256
+     ```
+
+3. Ensure port `5432/tcp` is reachable from Server A (UFW example):
+
+   ```bash
+   sudo ufw allow from 10.10.10.20 to any port 5432 proto tcp
+   ```
+
+4. Apply changes:
+
+   ```bash
+   sudo systemctl restart postgresql
+   ```
+
+#### PostgreSQL memory tuning for 16 GB RAM
+
+These values are a reasonable baseline and should be adjusted based on workload and concurrency.
+
+In `postgresql.conf` (or the Ubuntu cluster config file location), start with:
+
+```conf
+# Memory
+shared_buffers = 4GB
+effective_cache_size = 12GB
+work_mem = 32MB
+maintenance_work_mem = 1GB
+
+# WAL and checkpoints
+checkpoint_completion_target = 0.9
+wal_buffers = 16MB
+
+# Planner and I/O
+default_statistics_target = 200
+random_page_cost = 1.1
+effective_io_concurrency = 200
+```
+
+Notes:
+
+- `shared_buffers` around 25% of RAM is a typical starting point.
+- `work_mem` depends on number of concurrent sorts and hashes. If concurrency is high, reduce it.
+- If storage uses HDD instead of SSD, increase `random_page_cost`.
+
+#### Steps on Server A (App)
+
+1. Run all scripts except the PostgreSQL one:
+
+   ```bash
+   # Skip 01-install_postgres.sh
+   bash scripts/02-install_java.sh
+   bash scripts/03-install_tomcat.sh
+   bash scripts/04-install_activemq.sh
+   bash scripts/05-install_transform.sh
+   bash scripts/06-install_nginx.sh
+   bash scripts/07-install_solr.sh
+   bash scripts/08-configure_alfresco.sh
+   bash scripts/09-deploy_wars.sh
+   bash scripts/10-deploy_content_app.sh
+   bash scripts/11-start_services.sh
+   ```
+
+2. Point Alfresco to the remote database.
+
+   In `config/alfresco.env` set:
+
+   ```bash
+   ALFRESCO_DB_HOST=10.10.10.30
+   ALFRESCO_DB_PORT=5432
+   ALFRESCO_DB_NAME=alfresco
+   ALFRESCO_DB_USERNAME=alfresco
+   ALFRESCO_DB_PASSWORD=your_password
+   ```
+
+3. Verify connectivity from Server A:
+
+   ```bash
+   sudo apt-get update && sudo apt-get install -y postgresql-client
+   psql -h 10.10.10.30 -U alfresco -d alfresco -c "select 1;"
+   ```
+
+If `psql` fails, re-check: `pg_hba.conf`, firewall rules, and `listen_addresses`.
+
 
 ### Multi-Server Architecture
 
