@@ -167,7 +167,7 @@ verify_prerequisites() {
         log_warn "It is recommended to stop services before installing add-ons."
         log_warn "Run: bash scripts/12-stop_services.sh"
         echo ""
-        read -p "Do you want to continue anyway? (y/N): " confirm
+        read -rp "Do you want to continue anyway? (y/N): " confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "Installation cancelled. Stop services and try again."
             exit 0
@@ -203,7 +203,7 @@ download_addon() {
 
     if [ -f "$dest_file" ]; then
         log_info "File already exists: $dest_file"
-        read -p "Re-download? (y/N): " confirm
+        read -rp "Re-download? (y/N): " confirm
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             rm -f "$dest_file"
         else
