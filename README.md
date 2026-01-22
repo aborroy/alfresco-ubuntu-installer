@@ -21,6 +21,7 @@ Automated installation scripts for deploying **Alfresco Content Services Communi
 * [Backup and Restore](#backup-and-restore)
 * [Installing Add-ons](#installing-add-ons)
 * [Security Considerations](#security-considerations)
+  * [Configuring HTTPS with TLS 1.3](#configuring-https-with-tls-13)
 
 ---
 
@@ -1107,7 +1108,242 @@ For detailed instructions, examples, and troubleshooting, see **[ADDONS.md](ADDO
 
 1. **Admin password is auto-generated** - Check `config/alfresco.env` for the generated password after running `00-generate-config.sh`. Save it securely!
 2. **Password encoding** - The installer configures `bcrypt10` encoding for secure password storage. MD4 passwords are automatically upgraded on first login.
-3. **Configure HTTPS** in Nginx for production deployments
+3. **Configure HTTPS** in Nginx for production deployments (see below)
 4. **Restrict network access** to internal ports (8080, 8983, 8161, etc.)
 5. **Keep `config/alfresco.env` secure** - it contains all passwords including admin, database, and Solr secrets
 6. **Regular backups** - Use the provided backup scripts
+
+### Configuring HTTPS with TLS 1.3
+
+For production deployments, you should enable HTTPS with TLS 1.3. This requires:
+
+1. SSL/TLS certificates (self-signed or from a Certificate Authority)
+2. Updated Nginx configuration
+3. Updated Tomcat connector configuration
+4. Updated Alfresco URL settings
+
+#### Option 1: Self-Signed Certificate (Development/Testing)
+
+Generate a self-signed certificate:
+
+```bash
+# Create certificate directory
+sudo mkdir -p /etc/nginx/ssl
+
+# Generate private key and self-signed certificate (valid for 365 days)
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/alfresco.key \
+    -out /etc/nginx/ssl/alfresco.crt \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=${NGINX_SERVER_NAME:-localhost}"
+
+# Set secure permissions
+sudo chmod 600 /etc/nginx/ssl/alfresco.key
+sudo chmod 644 /etc/nginx/ssl/alfresco.crt
+```
+
+#### Option 2: Let's Encrypt Certificate (Production)
+
+For production environments, use free certificates from Let's Encrypt:
+
+```bash
+# Install Certbot
+sudo apt-get update
+sudo apt-get install -y certbot python3-certbot-nginx
+
+# Obtain certificate (Nginx must be running on port 80)
+# Replace 'your-domain.com' with your actual domain
+sudo certbot --nginx -d your-domain.com
+
+# Certbot will automatically:
+# - Obtain the certificate
+# - Configure Nginx for HTTPS
+# - Set up automatic renewal
+
+# Verify auto-renewal is configured
+sudo certbot renew --dry-run
+```
+
+**Let's Encrypt requirements:**
+- Your server must be accessible from the internet on port 80
+- DNS must point to your server's public IP
+- The domain name must be valid (not localhost)
+
+#### Update Nginx Configuration for HTTPS
+
+Replace your Nginx configuration (`/etc/nginx/sites-available/alfresco`) with HTTPS support:
+
+```nginx
+# =============================================================================
+# Alfresco Nginx Configuration with HTTPS/TLS 1.3
+# =============================================================================
+
+upstream alfresco_backend {
+    server localhost:8080;
+    keepalive 32;
+}
+
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name your-server-name;
+    return 301 https://$server_name$request_uri;
+}
+
+# HTTPS Server
+server {
+    listen 443 ssl http2;
+    server_name your-server-name;
+
+    # -----------------------------------------------------------------
+    # SSL/TLS Configuration (TLS 1.3 only)
+    # -----------------------------------------------------------------
+    ssl_certificate     /etc/nginx/ssl/alfresco.crt;
+    ssl_certificate_key /etc/nginx/ssl/alfresco.key;
+
+    # TLS 1.3 only
+    ssl_protocols TLSv1.3;
+
+    # TLS 1.3 does not use `ssl_ciphers`; it uses TLS 1.3 cipher suites internally.
+    ssl_prefer_server_ciphers off;
+
+    # SSL session settings
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
+    # -----------------------------------------------------------------
+    # General Settings
+    # -----------------------------------------------------------------
+    client_max_body_size 0;
+    
+    proxy_connect_timeout 300;
+    proxy_send_timeout 300;
+    proxy_read_timeout 300;
+    send_timeout 300;
+
+    # -----------------------------------------------------------------
+    # Proxy Settings
+    # -----------------------------------------------------------------
+    proxy_http_version 1.1;
+    proxy_set_header Host $host:$server_port;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_buffering off;
+
+    # -----------------------------------------------------------------
+    # Alfresco Content App (ACA)
+    # -----------------------------------------------------------------
+    location / {
+        root /var/www/alfresco-content-app;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # -----------------------------------------------------------------
+    # Alfresco Repository
+    # -----------------------------------------------------------------
+    location /alfresco/ {
+        proxy_pass http://alfresco_backend;
+    }
+
+    # -----------------------------------------------------------------
+    # Alfresco Share
+    # -----------------------------------------------------------------
+    location /share/ {
+        proxy_pass http://alfresco_backend;
+    }
+
+    # -----------------------------------------------------------------
+    # WebDAV
+    # -----------------------------------------------------------------
+    location /webdav/ {
+        proxy_pass http://alfresco_backend;
+    }
+}
+```
+
+#### Update Tomcat Configuration for HTTPS Proxy
+
+When using HTTPS on Nginx, Tomcat must be configured to recognize that requests are coming through a secure proxy. Edit the Tomcat connector in `${ALFRESCO_HOME}/tomcat/conf/server.xml`:
+
+Find the HTTP connector (port 8080) and add the `scheme`, `secure`, and `proxyPort` attributes:
+
+```xml
+<Connector port="8080" protocol="HTTP/1.1"
+           connectionTimeout="20000"
+           redirectPort="8443"
+           maxParameterCount="1000"
+           URIEncoding="UTF-8"
+           scheme="https"
+           secure="true"
+           proxyName="your-server-name"
+           proxyPort="443" />
+```
+
+Alternatively, use `sed` to update the configuration:
+
+```bash
+# Backup server.xml
+sudo cp ${ALFRESCO_HOME}/tomcat/conf/server.xml ${ALFRESCO_HOME}/tomcat/conf/server.xml.backup
+
+# Add HTTPS proxy settings to the connector
+sudo sed -i 's/Connector port="8080"/Connector port="8080" scheme="https" secure="true" proxyName="your-server-name" proxyPort="443"/' \
+    ${ALFRESCO_HOME}/tomcat/conf/server.xml
+```
+
+#### Update Alfresco Configuration
+
+Update `${ALFRESCO_HOME}/tomcat/shared/classes/alfresco-global.properties`:
+
+```properties
+# Update protocol settings
+alfresco.protocol=https
+alfresco.host=your-server-name
+alfresco.port=443
+
+share.protocol=https
+share.host=your-server-name
+share.port=443
+```
+
+#### Apply Changes
+
+After making all configuration changes:
+
+```bash
+# Test Nginx configuration
+sudo nginx -t
+
+# Restart services
+bash scripts/12-stop_services.sh
+bash scripts/11-start_services.sh
+
+# Verify HTTPS is working
+curl -k https://localhost/alfresco/api/-default-/public/alfresco/versions/1/probes/-ready-
+```
+
+#### Verify TLS Configuration
+
+Test your TLS configuration:
+
+```bash
+# Check TLS version and cipher
+openssl s_client -connect your-server-name:443 -tls1_3
+
+# Or use curl with verbose output
+curl -vI https://your-server-name/
+
+# Online test (for public servers)
+# Visit: https://www.ssllabs.com/ssltest/
+```
