@@ -853,39 +853,58 @@ flowchart TB
 
 #### Example values
 
-- Server A (App): `10.10.10.20`
-- Server B (DB): `10.10.10.30`
+- Server A (App): `10.250.6.18`
+- Server B (DB): `10.250.6.2`
 - Alfresco database name: `alfresco`
 - Alfresco database user: `alfresco`
 
 #### Steps on Server B (DB)
 
-1. Run the PostgreSQL installer script:
+1. Clone the Repository
+
+   ```bash
+   git clone https://github.com/aborroy/alfresco-ubuntu-installer.git
+   cd alfresco-ubuntu-installer
+   ```
+
+2. Generate Configuration
+
+```bash
+bash scripts/00-generate-config.sh
+```
+
+This creates `config/alfresco.env` with secure random passwords. Review and customize if needed:
+
+```bash
+cat config/alfresco.env
+```
+
+3. Run the PostgreSQL installer script:
 
    ```bash
    bash scripts/01-install_postgres.sh
    ```
 
-2. Allow remote connections from Server A.
+4. Allow remote connections from Server A.
 
-   - In `postgresql.conf`, set:
+   - In `/etc/postgresql/16/main/postgresql.conf`, set:
 
      - `listen_addresses = '*'`
 
-   - In `pg_hba.conf`, add a rule that allows Server A only:
+   - In `/etc/postresql/16/main/pg_hba.conf`, add a rule that allows Server A only:
 
      ```conf
      # Allow Alfresco from Server A only
-     host    alfresco    alfresco    10.10.10.20/32    scram-sha-256
+     host    alfresco    alfresco    10.250.6.18/32    scram-sha-256
      ```
 
-3. Ensure port `5432/tcp` is reachable from Server A (UFW example):
+5. Ensure port `5432/tcp` is reachable from Server A (UFW example):
 
    ```bash
-   sudo ufw allow from 10.10.10.20 to any port 5432 proto tcp
+   sudo ufw allow from 10.250.6.18 to any port 5432 proto tcp
    ```
 
-4. Apply changes:
+6. Apply changes:
 
    ```bash
    sudo systemctl restart postgresql
@@ -922,39 +941,55 @@ Notes:
 
 #### Steps on Server A (App)
 
-1. Run all scripts except the PostgreSQL one:
+1. Clone the Repository
 
    ```bash
-   # Skip 01-install_postgres.sh
-   bash scripts/02-install_java.sh
-   bash scripts/03-install_tomcat.sh
-   bash scripts/04-install_activemq.sh
-   bash scripts/05-install_transform.sh
-   bash scripts/06-install_nginx.sh
-   bash scripts/07-install_solr.sh
-   bash scripts/08-configure_alfresco.sh
-   bash scripts/09-deploy_wars.sh
-   bash scripts/10-deploy_content_app.sh
-   bash scripts/11-start_services.sh
+   git clone https://github.com/aborroy/alfresco-ubuntu-installer.git
+   cd alfresco-ubuntu-installer
    ```
+
+2. Generate Configuration
+
+```bash
+bash scripts/00-generate-config.sh
+```
 
 2. Point Alfresco to the remote database.
 
    In `config/alfresco.env` set:
 
    ```bash
-   ALFRESCO_DB_HOST=10.10.10.30
+   ALFRESCO_DB_HOST=10.250.6.2
    ALFRESCO_DB_PORT=5432
    ALFRESCO_DB_NAME=alfresco
    ALFRESCO_DB_USERNAME=alfresco
    ALFRESCO_DB_PASSWORD=your_password
    ```
 
-3. Verify connectivity from Server A:
+   >> Get `your_password` from `config/alfresco.env` in 10.250.6.2
+
+
+3. Run all scripts except the PostgreSQL one:
+
+   ```bash
+   # Skip 01-install_postgres.sh
+   bash scripts/02-install_java.sh
+   bash scripts/03-install_tomcat.sh
+   bash scripts/04-install_activemq.sh
+   bash scripts/05-download_alfresco_resources.sh
+   bash scripts/06-install_alfresco.sh
+   bash scripts/07-install_solr.sh
+   bash scripts/08-install_transform.sh
+   bash scripts/09-build_aca.sh
+   bash scripts/10-install_nginx.sh
+   bash scripts/11-start_services.sh
+   ```
+
+4. Verify connectivity from Server A:
 
    ```bash
    sudo apt-get update && sudo apt-get install -y postgresql-client
-   psql -h 10.10.10.30 -U alfresco -d alfresco -c "select 1;"
+   psql -h 10.250.6.2 -U alfresco -d alfresco -c "select 1;"
    ```
 
 If `psql` fails, re-check: `pg_hba.conf`, firewall rules, and `listen_addresses`.
