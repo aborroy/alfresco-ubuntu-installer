@@ -959,14 +959,16 @@ bash scripts/00-generate-config.sh
    In `config/alfresco.env` set:
 
    ```bash
-   ALFRESCO_DB_HOST=10.250.6.2
-   ALFRESCO_DB_PORT=5432
-   ALFRESCO_DB_NAME=alfresco
-   ALFRESCO_DB_USERNAME=alfresco
-   ALFRESCO_DB_PASSWORD=your_password
+   export ALFRESCO_DB_HOST="10.250.6.2"
+   export ALFRESCO_DB_PORT="5432"
+   export ALFRESCO_DB_NAME="alfresco"
+   export ALFRESCO_DB_USER="alfresco"
+   export ALFRESCO_DB_PASSWORD="your_password"
    ```
 
-   >> Get `your_password` from `config/alfresco.env` in 10.250.6.2
+   > **Important**: Use the exact variable names with `export` and quotes as shown above.
+   > Get `your_password` from `config/alfresco.env` on Server B (10.250.6.2).
+   > The variables must be set **before** running any installation scripts.
 
 
 3. Run all scripts except the PostgreSQL one:

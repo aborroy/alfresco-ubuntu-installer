@@ -149,6 +149,12 @@ start_service() {
 # PostgreSQL
 # -----------------------------------------------------------------------------
 start_postgresql() {
+    # Skip if using remote database (Two-Server Architecture)
+    if [ "${ALFRESCO_DB_HOST}" != "localhost" ] && [ "${ALFRESCO_DB_HOST}" != "127.0.0.1" ]; then
+        log_info "Using remote database (${ALFRESCO_DB_HOST}), skipping local PostgreSQL start"
+        SERVICE_STATUS["postgresql"]="remote"
+        return 0
+    fi
     start_service "postgresql" "PostgreSQL" "check_postgresql_health"
 }
 
@@ -372,6 +378,9 @@ display_summary() {
                 ;;
             "not installed")
                 status_icon="-"
+                ;;
+            "remote")
+                status_icon="~"
                 ;;
             *)
                 status_icon="x"

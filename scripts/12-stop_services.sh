@@ -235,6 +235,12 @@ pre_stop_activemq() {
 # PostgreSQL
 # -----------------------------------------------------------------------------
 stop_postgresql() {
+    # Skip if using remote database (Two-Server Architecture)
+    if [ "${ALFRESCO_DB_HOST}" != "localhost" ] && [ "${ALFRESCO_DB_HOST}" != "127.0.0.1" ]; then
+        log_info "Using remote database (${ALFRESCO_DB_HOST}), skipping local PostgreSQL stop"
+        SERVICE_STATUS["postgresql"]="remote"
+        return 0
+    fi
     stop_service "postgresql" "PostgreSQL" "pre_stop_postgresql"
 }
 
@@ -280,6 +286,9 @@ display_summary() {
                 ;;
             "not installed")
                 status_icon="-"
+                ;;
+            "remote")
+                status_icon="~"
                 ;;
             "timeout"|"still running"|"failed to stop")
                 status_icon="x"

@@ -263,12 +263,21 @@ create_systemd_service() {
         backup_file "$service_file"
     fi
     
+    # Determine PostgreSQL dependency based on configuration
+    local pg_dependency=""
+    if [ "${ALFRESCO_DB_HOST}" = "localhost" ] || [ "${ALFRESCO_DB_HOST}" = "127.0.0.1" ]; then
+        pg_dependency="After=network.target postgresql.service
+Requires=postgresql.service"
+    else
+        # Remote database - no local PostgreSQL dependency
+        pg_dependency="After=network.target"
+    fi
+
     cat << EOF | sudo tee "$service_file" > /dev/null
 [Unit]
 Description=Apache ActiveMQ Message Broker
 Documentation=https://activemq.apache.org/
-After=network.target postgresql.service
-Requires=postgresql.service
+${pg_dependency}
 
 [Service]
 Type=forking

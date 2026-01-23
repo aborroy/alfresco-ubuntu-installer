@@ -29,6 +29,35 @@ main() {
     check_sudo  # Verify sudo access
     load_config # Load configuration from alfresco.env
     
+    # Check if using remote database (Two-Server Architecture)
+    if [ "${ALFRESCO_DB_HOST}" != "localhost" ] && [ "${ALFRESCO_DB_HOST}" != "127.0.0.1" ]; then
+        log_warn "============================================================"
+        log_warn "Remote database detected: ALFRESCO_DB_HOST=${ALFRESCO_DB_HOST}"
+        log_warn "============================================================"
+        log_warn ""
+        log_warn "You appear to be using a Two-Server Architecture with a"
+        log_warn "dedicated PostgreSQL server. This script should only be run"
+        log_warn "on the database server (Server B), not the application server."
+        log_warn ""
+        log_warn "If this IS the database server:"
+        log_warn "  - Set ALFRESCO_DB_HOST=localhost in config/alfresco.env"
+        log_warn "  - Re-run this script"
+        log_warn ""
+        log_warn "If this is the APPLICATION server (Server A):"
+        log_warn "  - Skip this script entirely"
+        log_warn "  - Proceed with: bash scripts/02-install_java.sh"
+        log_warn ""
+        log_warn "See README.md section 'Two-Server Architecture' for details."
+        log_warn "============================================================"
+        
+        read -p "Continue anyway? (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            log_info "Installation cancelled."
+            exit 0
+        fi
+        log_warn "Continuing with PostgreSQL installation..."
+    fi
+    
     # Check memory requirements
     check_memory_requirements 8192 || true
     
