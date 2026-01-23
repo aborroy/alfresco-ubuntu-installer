@@ -50,7 +50,7 @@ main() {
         log_warn "See README.md section 'Two-Server Architecture' for details."
         log_warn "============================================================"
         
-        read -p "Continue anyway? (y/N): " confirm
+        read -r -p "Continue anyway? (y/N): " confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "Installation cancelled."
             exit 0
