@@ -95,19 +95,28 @@ ensure_clean_libreoffice_install() {
         sudo apt-get autoclean -y || true
     fi
 
-    # Install a minimal, deterministic LibreOffice set for headless conversions
+    # Install a minimal, deterministic LibreOffice set for headless conversions.
+    # Keep Impress to support PPT/PPTX transformations.
     log_info "Installing LibreOffice (APT, minimal headless set)..."
     sudo apt-get update
     sudo apt-get install -y \
         libreoffice-core \
         libreoffice-writer \
         libreoffice-calc \
+        libreoffice-impress \
         fonts-dejavu \
         fonts-liberation
 
     # Sanity check
     if ! command -v soffice >/dev/null 2>&1; then
         log_error "LibreOffice installation failed: soffice not found"
+        exit 1
+    fi
+
+    # Ensure the PPT/PPTX conversion module is available.
+    if ! dpkg-query -W -f='${db:Status-Status}\n' libreoffice-impress 2>/dev/null | grep -qx "installed"; then
+        log_error "LibreOffice installation is incomplete: libreoffice-impress is missing"
+        log_error "PPT/PPTX transformations require libreoffice-impress"
         exit 1
     fi
 
