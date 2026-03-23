@@ -10,13 +10,14 @@
 #
 # Options:
 #   --force              Overwrite existing configuration file
-#   --profile PROFILE    Select version profile: 7.4, 23.x, 25.x (default: 23.x)
+#   --profile PROFILE    Select version profile: 7.4, 23.x, 25.x, 26.1 (default: 23.x)
 #   --list-profiles      List available version profiles
 #
 # Examples:
 #   bash scripts/00-generate-config.sh                    # Use default (23.x)
 #   bash scripts/00-generate-config.sh --profile 7.4      # Use Alfresco 7.4
 #   bash scripts/00-generate-config.sh --profile 25.x     # Use Alfresco 25.x
+#   bash scripts/00-generate-config.sh --profile 26.1     # Use Alfresco 26.1
 # =============================================================================
 
 set -euo pipefail
@@ -164,7 +165,7 @@ main() {
                 echo ""
                 echo "Options:"
                 echo "  --force              Overwrite existing configuration"
-                echo "  --profile PROFILE    Select version profile: 7.4, 23.x, 25.x"
+                echo "  --profile PROFILE    Select version profile: 7.4, 23.x, 25.x, 26.1"
                 echo "  --list-profiles      List available version profiles"
                 echo "  --env-only           Only generate alfresco.env (skip versions.conf)"
                 echo "  -h, --help           Show this help message"

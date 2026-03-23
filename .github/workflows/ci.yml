@@ -39,17 +39,29 @@ jobs:
   # Validate Job - Check configuration files
   # ===========================================================================
   validate:
-    name: Validate Configuration
+    name: Validate Configuration (${{ matrix.profile }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [7.4, 23.x, 25.x, 26.1]
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate versions.conf syntax
+      - name: List available profiles
         run: |
-          echo "Validating versions.conf..."
-          source config/versions.conf
+          echo "Listing available profiles..."
+          bash scripts/00-generate-config.sh --list-profiles
+
+      - name: Validate selected profile syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          profile_file="config/profiles/versions-${{ matrix.profile }}.conf"
+          echo "Validating ${profile_file}..."
+          source "${profile_file}"
           echo "  ALFRESCO_VERSION=${ALFRESCO_VERSION}"
           echo "  ALFRESCO_SEARCH_VERSION=${ALFRESCO_SEARCH_VERSION}"
           echo "  ALFRESCO_TRANSFORM_VERSION=${ALFRESCO_TRANSFORM_VERSION}"
@@ -57,10 +69,28 @@ jobs:
           echo "  ACTIVEMQ_VERSION=${ACTIVEMQ_VERSION}"
           echo "  POSTGRESQL_VERSION=${POSTGRESQL_VERSION}"
           echo "  JAVA_VERSION=${JAVA_VERSION}"
-          echo "Configuration is valid!"
+          echo "  ACA_VERSION=${ACA_VERSION}"
+          echo "  NODEJS_VERSION=${NODEJS_VERSION}"
+          echo "Profile is valid!"
+
+      - name: Generate configuration for selected profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Generating configuration for profile ${{ matrix.profile }}..."
+          chmod +x scripts/*.sh
+          rm -f config/alfresco.env
+          bash scripts/00-generate-config.sh --force --profile "${{ matrix.profile }}"
+          source config/versions.conf
+          echo "Generated versions.conf for ${ALFRESCO_VERSION}"
+          test "${ALFRESCO_VERSION}" != ""
+          test "${ACA_VERSION}" != ""
+          test "${NODEJS_VERSION}" != ""
 
       - name: Validate alfresco.env.template syntax
+        shell: bash
         run: |
+          set -euo pipefail
           echo "Validating alfresco.env.template..."
           source config/alfresco.env.template
           echo "Template is valid!"

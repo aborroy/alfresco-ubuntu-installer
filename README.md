@@ -186,7 +186,8 @@ alfresco-ubuntu-installer/
 │   └── profiles/                # Version profiles
 │       ├── versions-7.4.conf    # Alfresco 7.4 LTS
 │       ├── versions-23.x.conf   # Alfresco 23.x (default)
-│       └── versions-25.x.conf   # Alfresco 25.x (latest)
+│       ├── versions-25.x.conf   # Alfresco 25.x
+│       └── versions-26.1.conf   # Alfresco 26.1
 ├── scripts/
 │   ├── common.sh                # Shared functions
 │   ├── 00-generate-config.sh    # Generate secure configuration
@@ -222,7 +223,8 @@ The installer supports multiple Alfresco versions through pre-configured profile
 |---------|----------|------|--------|------------|--------|
 | **7.4** | 7.4.2 | 17 | 9.0.x | 14 | LTS (legacy) |
 | **23.x** | 23.4.1 | 17 | 10.1.x | 16 | Maintained |
-| **25.x** | 25.2.0 | 17/21 | 10.1.x | 16 | Stable (newest) |
+| **25.x** | 25.2.0 | 17/21 | 10.1.x | 16 | Stable |
+| **26.1** | 26.1.0 | 17 | 10.1.x | 16 | Current (non-default) |
 
 Select a profile during configuration:
 
@@ -236,9 +238,14 @@ bash scripts/00-generate-config.sh
 # Use Alfresco 7.4 (legacy support)
 bash scripts/00-generate-config.sh --profile 7.4
 
-# Use Alfresco 25.x (latest)
+# Use Alfresco 25.x
 bash scripts/00-generate-config.sh --profile 25.x
+
+# Use Alfresco 26.1
+bash scripts/00-generate-config.sh --profile 26.1
 ```
+
+The `26.1` profile keeps `23.x` as the default configuration and updates the frontend stack to ACA `7.3.0` with Node.js `24`.
 
 ### Version Configuration (`config/versions.conf`)
 
@@ -405,6 +412,8 @@ $ bash scripts/11-start_services.sh
 ```
 
 ## Component Details
+
+The versions below describe the default `23.x` profile. Other profiles, including `26.1`, use the versions pinned in their respective files under `config/profiles/`.
 
 ### 1. PostgreSQL
 
