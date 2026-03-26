@@ -381,6 +381,8 @@ legacy.transform.service.enabled=false
 # ActiveMQ / Messaging Configuration
 # -----------------------------------------------------------------------------
 messaging.broker.url=failover:(nio://${ACTIVEMQ_HOST}:${ACTIVEMQ_PORT})?timeout=3000&jms.useCompression=true
+messaging.broker.username=${ACTIVEMQ_ADMIN_USER}
+messaging.broker.password=${ACTIVEMQ_ADMIN_PASSWORD}
 
 # -----------------------------------------------------------------------------
 # Alfresco URL Generation

@@ -411,6 +411,9 @@ Environment="XDG_CACHE_HOME=/var/lib/alfresco/.cache"
 
 # Transform service configuration
 Environment="TRANSFORM_PORT=${TRANSFORM_PORT}"
+Environment="ACTIVEMQ_URL=nio://${ACTIVEMQ_HOST}:${ACTIVEMQ_PORT}"
+Environment="ACTIVEMQ_USER=${ACTIVEMQ_ADMIN_USER}"
+Environment="ACTIVEMQ_PASSWORD=${ACTIVEMQ_ADMIN_PASSWORD}"
 
 # ExecStart uses the symlink, not the versioned JAR
 # This allows upgrading the JAR without modifying the service file
